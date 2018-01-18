@@ -72,35 +72,55 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     typename FractureModelBase<DisplacementDim>::MaterialStateVariables&
         material_state_variables)
 {
-    material_state_variables.reset();
+    assert(dynamic_cast<StateVariables<DisplacementDim> const*>(
+               &material_state_variables) != nullptr);
+
+    StateVariables<DisplacementDim> state =
+        static_cast<StateVariables<DisplacementDim> const&>(
+            material_state_variables);
+    state.setInitialConditions();
+
+    auto const mp = MaterialPropertyValues(_mp, t, x);
+
+    C.setZero();
 
     const int index_ns = DisplacementDim - 1;
-    C.setZero();
+    double const w_n = w[index_ns];
     for (int i = 0; i < index_ns; i++)
-        C(i, i) = _mp.shear_stiffness(t, x)[0];
+        C(i, i) = mp.Ks;
 
     sigma.noalias() = C * w;
 
-    double const aperture = w[index_ns] + aperture0;
+    double const aperture = w_n + aperture0;
 
+    // TODO (nagel) If needed add residual stiffness.
     sigma.coeffRef(index_ns) =
-        _mp.normal_stiffness(t, x)[0] * w[index_ns] *
-        logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
+        mp.Kn * w_n * logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
 
     C(index_ns, index_ns) =
-        _mp.normal_stiffness(t, x)[0] *
+        mp.Kn *
         logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
 
-    // Initial stress not considered, yet.
-    // sigma.noalias() += sigma0;
-
-    // correction for an opening fracture
-    if (_tension_cutoff && sigma[index_ns] > 0)
+    if (w_n < 0)
     {
-        C.setZero();
-        sigma.setZero();
-        material_state_variables.setTensileStress(true);
+        return;  ///
     }
+
+    double const damage =
+        computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
+    C.noalias() = C * (1 - damage);
+    sigma.noalias() = sigma * (1 - damage);
+
+    if (damage > state.damage_prev)
+    {
+        Eigen::Matrix<double, DisplacementDim, 1> dd_dw;
+        dd_dw[index_ns] = 1 / (mp.w_nf - mp.w_np);
+
+        C.noalias() -= (C / (1 - damage) * w) * (dd_dw).transpose();
+    }
+
+    // TODO (nagel) Initial stress not considered, yet.
+    // sigma.noalias() += sigma0;
 }
 
 template class CohesiveZoneModeI<2>;
