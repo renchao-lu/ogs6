@@ -30,30 +30,49 @@ public:
         using P = ProcessLib::Parameter<double>;
         using X = ProcessLib::SpatialPosition;
 
+    public:
         MaterialProperties(P const& normal_stiffness_,
-                           P const& shear_stiffness_, P const& friction_angle_,
-                           P const& dilatancy_angle_, P const& cohesion_)
+                           P const& shear_stiffness_,
+                           P const& fracture_toughness,
+                           P const& peak_normal_traction,
+                           double const residual_stiffness)
             : normal_stiffness(normal_stiffness_),
               shear_stiffness(shear_stiffness_),
-              friction_angle(friction_angle_),
-              dilatancy_angle(dilatancy_angle_),
-              cohesion(cohesion_)
+              _fracture_toughness(fracture_toughness),
+              _peak_normal_traction(peak_normal_traction),
+              _residual_stiffness(residual_stiffness)
         {
         }
 
+        /// Assuming initially stress-free state.
+        double fracture_opening_at_peak_traction(double const t,
+                                                 X const& x) const
+        {
+            return _peak_normal_traction(t, x)[0] / normal_stiffness(t, x)[0];
+        }
+
+        /// Assuming initially stress-free state.
+        double fracture_opening_at_residual_traction(double const t,
+                                                     X const& x) const
+        {
+            return 2 * _fracture_toughness(t, x)[0] /
+                   _peak_normal_traction(t, x)[0];
+        }
+
+    public:
         /// Normal stiffness given in units of stress.
         P const& normal_stiffness;
         /// Shear stiffness given in units of stress.
         P const& shear_stiffness;
-        /// Governs the normal stress dependence of the shear strength.
-        /// \note Given in degrees (not radian).
-        P const& friction_angle;
-        /// Governs the dilatancy behaviour during the plastic deformation of
-        /// the fault.
-        /// \note Given in degrees (not radian).
-        P const& dilatancy_angle;
-        /// Fracture cohesion in units of stress.
-        P const& cohesion;
+
+    private:
+        /// Fracture toughness/critical energy release rate given in of stress
+        /// times lengths.
+        P const& _fracture_toughness;
+        /// Peak normal traction given in units of stress.
+        P const& _peak_normal_traction;
+        /// Residual stiffness given in units of stress.
+        double const _residual_stiffness;
     };
 
     struct MaterialStateVariables

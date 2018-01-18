@@ -33,17 +33,17 @@ std::unique_ptr<FractureModelBase<DisplacementDim>> createCohesiveZoneModeI(
         //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__shear_stiffness}
         config, "shear_stiffness", parameters, 1);
 
-    auto& friction_angle = ProcessLib::findParameter<double>(
-        //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__friction_angle}
-        config, "friction_angle", parameters, 1);
+    auto& Gc = ProcessLib::findParameter<double>(
+        //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__fracture_toughness}
+        config, "fracture_toughness", parameters, 1);
 
-    auto& dilatancy_angle = ProcessLib::findParameter<double>(
-        //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__dilatancy_angle}
-        config, "dilatancy_angle", parameters, 1);
+    auto& t_np = ProcessLib::findParameter<double>(
+        //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__peak_normal_traction}
+        config, "peak_normal_traction", parameters, 1);
 
-    auto& cohesion = ProcessLib::findParameter<double>(
-        //! \ogs_file_param_special{material__fracture_model__CohesiveZoneModeI__cohesion}
-        config, "cohesion", parameters, 1);
+    auto const Kres =
+        //! \ogs_file_param{material__fracture_model__CohesiveZoneModeI__penalty_aperture_cutoff}
+        config.getConfigParameter<double>("residual_stiffness");
 
     auto const penalty_aperture_cutoff =
         //! \ogs_file_param{material__fracture_model__CohesiveZoneModeI__penalty_aperture_cutoff}
@@ -54,7 +54,7 @@ std::unique_ptr<FractureModelBase<DisplacementDim>> createCohesiveZoneModeI(
         config.getConfigParameter<bool>("tension_cutoff");
 
     typename CohesiveZoneModeI<DisplacementDim>::MaterialProperties mp{
-        Kn, Ks, friction_angle, dilatancy_angle, cohesion};
+        Kn, Ks, Gc, t_np, Kres};
 
     return std::make_unique<CohesiveZoneModeI<DisplacementDim>>(
         penalty_aperture_cutoff, tension_cutoff, mp);
