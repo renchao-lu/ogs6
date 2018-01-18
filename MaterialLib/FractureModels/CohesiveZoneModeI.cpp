@@ -103,21 +103,29 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
 
     if (w_n < 0)
     {
-        return;  ///
+        return;  /// Undamaged stiffness used in compression.
     }
 
-    double const damage =
-        computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
-    C.noalias() = C * (1 - damage);
-    sigma.noalias() = sigma * (1 - damage);
+    state.damage = computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
 
-    if (damage > state.damage_prev)
+    if (state.damage > state.damage_prev)
     {
+        // If damage is increasing, provide extension to consistent tangent.
+
         Eigen::Matrix<double, DisplacementDim, 1> dd_dw;
         dd_dw[index_ns] = 1 / (mp.w_nf - mp.w_np);
 
-        C.noalias() -= (C / (1 - damage) * w) * (dd_dw).transpose();
+        // TODO (naumov)
+        // C.noalias() = C * (1 - damage) - C * w * (dd_dw).transpose();
+        C = C * (1 - state.damage) - C * w * (dd_dw).transpose();
     }
+    else
+    {
+        // Degrade stiffness tensor in tension.
+        C.noalias() = C * (1 - state.damage);
+    }
+
+    sigma.noalias() = sigma * (1 - state.damage);
 
     // TODO (nagel) Initial stress not considered, yet.
     // sigma.noalias() += sigma0;
