@@ -250,9 +250,9 @@ std::unique_ptr<Process> createHydroMechanicsProcess(
         }
         else if (frac_type == "CohesiveZoneModeI")
         {
-            fracture_model =
-                MaterialLib::Fracture::createCohesiveZoneModeI<GlobalDim>(
-                    parameters, fracture_model_config);
+            fracture_model = MaterialLib::Fracture::CohesiveZoneModeI::
+                createCohesiveZoneModeI<GlobalDim>(parameters,
+                                                   fracture_model_config);
         }
         else
         {

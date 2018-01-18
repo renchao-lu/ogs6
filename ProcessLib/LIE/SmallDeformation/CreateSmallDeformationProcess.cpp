@@ -149,8 +149,8 @@ std::unique_ptr<Process> createSmallDeformationProcess(
     else if (frac_type == "CohesiveZoneModeI")
     {
         fracture_model =
-            MaterialLib::Fracture::createCohesiveZoneModeI<DisplacementDim>(
-                parameters, fracture_model_config);
+            MaterialLib::Fracture::CohesiveZoneModeI::createCohesiveZoneModeI<
+                DisplacementDim>(parameters, fracture_model_config);
     }
     else
     {
