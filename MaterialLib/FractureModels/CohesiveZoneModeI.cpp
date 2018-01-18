@@ -17,6 +17,8 @@ namespace MaterialLib
 {
 namespace Fracture
 {
+namespace CohesiveZoneModeI
+{
 namespace
 {
 struct MaterialPropertyValues
@@ -90,5 +92,6 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
 template class CohesiveZoneModeI<2>;
 template class CohesiveZoneModeI<3>;
 
+}  // namespace CohesiveZoneModeI
 }  // namespace Fracture
 }  // namespace MaterialLib

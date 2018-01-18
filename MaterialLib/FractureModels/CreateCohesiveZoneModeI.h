@@ -15,10 +15,13 @@ namespace MaterialLib
 {
 namespace Fracture
 {
+namespace CohesiveZoneModeI
+{
 template <int DisplacementDim>
 std::unique_ptr<FractureModelBase<DisplacementDim>> createCohesiveZoneModeI(
     std::vector<std::unique_ptr<ProcessLib::ParameterBase>> const& parameters,
     BaseLib::ConfigTree const& config);
 
+}  // namespace CohesiveZoneModeI
 }  // namespace Fracture
 }  // namespace MaterialLib

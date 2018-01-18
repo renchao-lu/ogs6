@@ -20,6 +20,8 @@ namespace MaterialLib
 {
 namespace Fracture
 {
+namespace CohesiveZoneModeI
+{
 template <int DisplacementDim>
 class CohesiveZoneModeI final : public FractureModelBase<DisplacementDim>
 {
@@ -147,6 +149,7 @@ private:
     MaterialProperties _mp;
 };
 
+}  // namespace CohesiveZoneModeI
 }  // namespace Fracture
 }  // namespace MaterialLib
 
@@ -154,7 +157,10 @@ namespace MaterialLib
 {
 namespace Fracture
 {
+namespace CohesiveZoneModeI
+{
 extern template class CohesiveZoneModeI<2>;
 extern template class CohesiveZoneModeI<3>;
+}  // namespace CohesiveZoneModeI
 }  // namespace Fracture
 }  // namespace MaterialLib
