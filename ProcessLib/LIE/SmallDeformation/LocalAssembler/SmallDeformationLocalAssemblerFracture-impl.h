@@ -13,6 +13,7 @@
 
 #include <Eigen/Eigen>
 
+#include "MaterialLib/FractureModels/CohesiveZoneModeI.h"
 #include "MathLib/LinAlg/Eigen/EigenMapTools.h"
 
 #include "ProcessLib/Utils/InitShapeMatrices.h"
@@ -91,6 +92,19 @@ SmallDeformationLocalAssemblerFracture<ShapeFunction, IntegrationMethod,
         ip_data._aperture_prev = ip_data._aperture0;
 
         _secondary_data.N[ip] = sm.N;
+
+        if (dynamic_cast<MaterialLib::Fracture::CohesiveZoneModeI::
+                             StateVariables<DisplacementDim>*>(
+                ip_data._material_state_variables.get()) != nullptr)
+        {
+            if (_element.getID() == 19)
+            {
+                static_cast<MaterialLib::Fracture::CohesiveZoneModeI::
+                                StateVariables<DisplacementDim>&>(
+                    *ip_data._material_state_variables)
+                    .damage = 1;
+            }
+        }
     }
 }
 
