@@ -7,6 +7,8 @@
  *
  */
 
+#include <iostream>
+
 #include "CohesiveZoneModeI.h"
 #include "LogPenalty.h"
 
@@ -96,6 +98,7 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     // TODO (nagel) If needed add residual stiffness.
     sigma.coeffRef(index_ns) =
         mp.Kn * w_n * logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
+    std::cerr << "sigma " << sigma << "\n";
 
     C(index_ns, index_ns) =
         mp.Kn *
@@ -127,6 +130,8 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
 
     sigma.noalias() = sigma * (1 - state.damage);
 
+    std::cerr << "damage " << state.damage << "\n";
+    std::cerr << "exit sigma " << sigma << "\n";
     // TODO (nagel) Initial stress not considered, yet.
     // sigma.noalias() += sigma0;
 }
