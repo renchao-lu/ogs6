@@ -25,14 +25,18 @@ struct MaterialPropertyValues
 {
     double Kn = 0.0;
     double Ks = 0.0;
+    double w_np = 0.0;
+    double w_nf = 0.0;
 
     template <typename MaterialProperties>
     MaterialPropertyValues(MaterialProperties const& mp,
                            double const t,
                            ProcessLib::SpatialPosition const& x)
     {
-        Kn = mp._normal_stiffness(t, x)[0];
-        Ks = mp._shear_stiffness(t, x)[0];
+        Kn = mp.normal_stiffness(t, x)[0];
+        Ks = mp.shear_stiffness(t, x)[0];
+        w_np = mp.fracture_opening_at_peak_traction(t, x);
+        w_nf = mp.fracture_opening_at_residual_traction(t, x);
     }
 };
 
