@@ -59,12 +59,12 @@ public:
                            P const& shear_stiffness_,
                            P const& fracture_toughness,
                            P const& peak_normal_traction,
-                           double const residual_stiffness)
+                           double const residual_stiffness_)
             : normal_stiffness(normal_stiffness_),
               shear_stiffness(shear_stiffness_),
+              residual_stiffness(residual_stiffness_),
               _fracture_toughness(fracture_toughness),
-              _peak_normal_traction(peak_normal_traction),
-              _residual_stiffness(residual_stiffness)
+              _peak_normal_traction(peak_normal_traction)
         {
         }
 
@@ -84,10 +84,13 @@ public:
         }
 
     public:
-        /// Normal stiffness given in units of stress.
+        /// Normal stiffness given in units of stress per length.
+        /// TODO (naumov) update other models' comment.
         P const& normal_stiffness;
-        /// Shear stiffness given in units of stress.
+        /// Shear stiffness given in units of stress per length.
         P const& shear_stiffness;
+        /// Residual stiffness given in units of stress.
+        double const residual_stiffness;
 
     private:
         /// Fracture toughness/critical energy release rate given in of stress
@@ -95,8 +98,6 @@ public:
         P const& _fracture_toughness;
         /// Peak normal traction given in units of stress.
         P const& _peak_normal_traction;
-        /// Residual stiffness given in units of stress.
-        double const _residual_stiffness;
     };
 
 public:

@@ -97,6 +97,7 @@ SmallDeformationLocalAssemblerFracture<ShapeFunction, IntegrationMethod,
                              StateVariables<DisplacementDim>*>(
                 ip_data._material_state_variables.get()) != nullptr)
         {
+            /*
             if (_element.getID() == 19)
             {
                 static_cast<MaterialLib::Fracture::CohesiveZoneModeI::
@@ -104,6 +105,7 @@ SmallDeformationLocalAssemblerFracture<ShapeFunction, IntegrationMethod,
                     *ip_data._material_state_variables)
                     .damage = 1;
             }
+            */
         }
     }
 }

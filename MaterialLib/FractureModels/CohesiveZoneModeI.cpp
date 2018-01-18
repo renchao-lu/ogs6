@@ -29,16 +29,18 @@ struct MaterialPropertyValues
     double Ks = 0.0;
     double w_np = 0.0;
     double w_nf = 0.0;
+    double Kres = 0.0;
 
     template <typename MaterialProperties>
-    MaterialPropertyValues(MaterialProperties const& mp,
-                           double const t,
-                           ProcessLib::SpatialPosition const& x)
+    MaterialPropertyValues(MaterialProperties const& mp, double const t,
+                           ProcessLib::SpatialPosition const& x,
+                           double const aperture0)
     {
         Kn = mp.normal_stiffness(t, x)[0];
         Ks = mp.shear_stiffness(t, x)[0];
         w_np = mp.fracture_opening_at_peak_traction(t, x);
         w_nf = mp.fracture_opening_at_residual_traction(t, x);
+        Kres = mp.residual_stiffness;
     }
 };
 
@@ -82,7 +84,7 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
             material_state_variables);
     state.setInitialConditions();
 
-    auto const mp = MaterialPropertyValues(_mp, t, x);
+    auto const mp = MaterialPropertyValues(_mp, t, x, aperture0);
 
     C.setZero();
 
@@ -99,6 +101,7 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     sigma.coeffRef(index_ns) =
         mp.Kn * w_n * logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
     std::cerr << "sigma " << sigma << "\n";
+    std::cerr << "w_n " << w_n << "\n";
 
     C(index_ns, index_ns) =
         mp.Kn *
@@ -109,17 +112,28 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
         return;  /// Undamaged stiffness used in compression.
     }
 
+    /*
+    C = C * 1e-10;
+    sigma = sigma * 0;
+    return;
+
+    */
+
     state.damage = computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
+    std::cerr << "w_nf / w_np " << mp.w_nf << "/" << mp.w_np << "\n";
 
     if (state.damage > state.damage_prev)
     {
         // If damage is increasing, provide extension to consistent tangent.
 
-        Eigen::Matrix<double, DisplacementDim, 1> dd_dw;
+        Eigen::Matrix<double, DisplacementDim, 1> dd_dw =
+            Eigen::Matrix<double, DisplacementDim, 1>::Zero();
         dd_dw[index_ns] = 1 / (mp.w_nf - mp.w_np);
+        std::cerr << "dd_dw " << dd_dw << "\n";
 
-        // TODO (naumov)
-        // C.noalias() = C * (1 - damage) - C * w * (dd_dw).transpose();
+        C(index_ns, index_ns) += mp.Kres;
+        // TODO (naumov) noalias
+        // C.noalias() = C * (1 - state.damage) - C * w * (dd_dw).transpose();
         C = C * (1 - state.damage) - C * w * (dd_dw).transpose();
     }
     else
