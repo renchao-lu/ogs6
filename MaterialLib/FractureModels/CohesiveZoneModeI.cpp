@@ -40,6 +40,16 @@ struct MaterialPropertyValues
     }
 };
 
+double computeDamage(double const damage_prev,
+                     double const w_n,
+                     double const w_np,
+                     double const w_nf)
+{
+    return std::min(
+        1.0,
+        std::max(damage_prev, std::max(0.0, (w_n - w_np)) / (w_nf - w_np)));
+}
+
 }  // namespace
 
 template <int DisplacementDim>
