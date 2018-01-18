@@ -23,8 +23,30 @@ namespace Fracture
 namespace CohesiveZoneModeI
 {
 template <int DisplacementDim>
+struct StateVariables
+    : public FractureModelBase<DisplacementDim>::MaterialStateVariables
+{
+    void setInitialConditions() { damage = damage_prev; }
+
+    void pushBackState() override { damage_prev = damage; }
+
+    double damage;  ///< damage part of the state.
+
+    // Initial values from previous timestep
+    double damage_prev;  ///< \copydoc damage
+};
+
+template <int DisplacementDim>
 class CohesiveZoneModeI final : public FractureModelBase<DisplacementDim>
 {
+public:
+    std::unique_ptr<
+        typename FractureModelBase<DisplacementDim>::MaterialStateVariables>
+    createMaterialStateVariables() override
+    {
+        return std::make_unique<StateVariables<DisplacementDim>>();
+    }
+
 public:
     /// Variables specific to the material model
     struct MaterialProperties
@@ -76,21 +98,6 @@ public:
         /// Residual stiffness given in units of stress.
         double const _residual_stiffness;
     };
-
-    struct MaterialStateVariables
-        : public FractureModelBase<DisplacementDim>::MaterialStateVariables
-    {
-        void pushBackState() override {}
-    };
-
-    std::unique_ptr<
-        typename FractureModelBase<DisplacementDim>::MaterialStateVariables>
-    createMaterialStateVariables() override
-    {
-        return std::unique_ptr<typename FractureModelBase<
-            DisplacementDim>::MaterialStateVariables>{
-            new MaterialStateVariables};
-    }
 
 public:
     explicit CohesiveZoneModeI(double const penalty_aperture_cutoff,
