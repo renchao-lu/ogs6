@@ -22,10 +22,34 @@ namespace Fracture
 {
 namespace MohrCoulomb
 {
+template <int DisplacementDim>
+struct StateVariables
+    : public FractureModelBase<DisplacementDim>::MaterialStateVariables
+{
+    void setInitialConditions() { w_p = w_p_prev; }
+
+    void pushBackState() override { w_p_prev = w_p; }
+
+    Eigen::Matrix<double, DisplacementDim, 1>
+        w_p;  ///< plastic component of
+              ///< the displacement jump
+              ///< in fracture's local coordinates.
+
+    // Initial values from previous timestep
+    Eigen::Matrix<double, DisplacementDim, 1> w_p_prev;  ///< \copydoc w
+};
 
 template <int DisplacementDim>
 class MohrCoulomb final : public FractureModelBase<DisplacementDim>
 {
+public:
+    std::unique_ptr<
+        typename FractureModelBase<DisplacementDim>::MaterialStateVariables>
+    createMaterialStateVariables() override
+    {
+        return std::make_unique<StateVariables<DisplacementDim>>();
+    }
+
 public:
     /// Variables specific to the material model
     struct MaterialProperties
@@ -58,21 +82,6 @@ public:
         P const& cohesion;
     };
 
-
-    struct MaterialStateVariables
-        : public FractureModelBase<DisplacementDim>::MaterialStateVariables
-    {
-        void pushBackState() override {}
-    };
-
-    std::unique_ptr<
-        typename FractureModelBase<DisplacementDim>::MaterialStateVariables>
-    createMaterialStateVariables() override
-    {
-        return std::unique_ptr<typename FractureModelBase<
-            DisplacementDim>::MaterialStateVariables>{
-            new MaterialStateVariables};
-    }
 
 public:
     explicit MohrCoulomb(double const penalty_aperture_cutoff,

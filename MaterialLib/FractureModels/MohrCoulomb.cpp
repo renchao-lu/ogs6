@@ -68,7 +68,11 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     typename FractureModelBase<DisplacementDim>::MaterialStateVariables&
         material_state_variables)
 {
-    material_state_variables.reset();
+    assert(dynamic_cast<StateVariables<DisplacementDim> const*>(
+               &material_state_variables) != nullptr);
+
+    StateVariables<DisplacementDim>& state =
+        static_cast<StateVariables<DisplacementDim>&>(material_state_variables);
 
     MaterialPropertyValues const mat(_mp, t, x);
     Eigen::VectorXd const dw = w - w_prev;
@@ -101,11 +105,8 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     // NOTE: Initial condition sigma0 seems to be associated with an initial
     // condition of the w0 = 0. Therefore the initial state is not associated
     // with a plastic aperture change.
-    Eigen::VectorXd const w_p_prev =
-        w_prev - Ke_prev.fullPivLu().solve(sigma_prev - sigma0);
-
     {  // Exact elastic predictor
-        sigma.noalias() = Ke * (w - w_p_prev);
+        sigma.noalias() = Ke * (w - state.w_p_prev);
 
         /*
         sigma.coeffRef(index_ns) =
