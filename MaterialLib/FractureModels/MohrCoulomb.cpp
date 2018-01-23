@@ -8,6 +8,7 @@
  */
 
 #include "MohrCoulomb.h"
+#include <iostream>
 #include "LogPenalty.h"
 
 #include "BaseLib/Error.h"
@@ -80,9 +81,7 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         for (int i = 0; i < index_ns; i++)
             Ke(i, i) = mat.Ks;
 
-        Ke(index_ns, index_ns) =
-            mat.Kn *
-            logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
+        Ke(index_ns, index_ns) = mat.Kn;
     }
 
     Eigen::MatrixXd Ke_prev;
@@ -106,9 +105,15 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     {  // Exact elastic predictor
         sigma.noalias() = Ke * (w - w_p_prev);
 
+        /*
         sigma.coeffRef(index_ns) =
             mat.Kn * w[index_ns] *
             logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
+            */
+        sigma.coeffRef(index_ns) *=
+            logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
+        Ke(index_ns, index_ns) *=
+            logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
     }
 
     sigma.noalias() += sigma0;
@@ -116,8 +121,10 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     double const sigma_n = sigma[index_ns];
 
     // correction for an opening fracture
-    if (_tension_cutoff && sigma_n > 0)
+    if (_tension_cutoff && sigma_n >= 0)
     {
+        std::cerr << "tension_cutoff. sigma before zeroing out:\n"
+                  << sigma << "\n";
         Kep.setZero();
         sigma.setZero();
         material_state_variables.setTensileStress(true);
@@ -136,6 +143,7 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         return;
     }
 
+    std::cerr << "Computed Fs >= 0; Fs = " << Fs << "\n";
     Eigen::VectorXd dFs_dS(DisplacementDim);
     dFs_dS.head(DisplacementDim-1).noalias() = sigma_s.normalized();
     dFs_dS[index_ns] = std::tan(mat.phi);
@@ -145,8 +153,10 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     dQs_dS[index_ns] = std::tan(mat.psi);
 
     // plastic multiplier
-    Eigen::RowVectorXd const A = dFs_dS.transpose() * Ke / (dFs_dS.transpose() * Ke * dQs_dS);
-    double const d_eta = A * dw;
+    Eigen::RowVectorXd const A =
+        dFs_dS.transpose() * Ke / (dFs_dS.transpose() * Ke * dQs_dS);
+    double const d_eta =
+        Fs / (mat.Ks + mat.Kn * std::tan(mat.phi) * std::tan(mat.psi));
 
     // plastic part of the dispalcement
     Eigen::VectorXd const dwp = dQs_dS * d_eta;
@@ -154,8 +164,20 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
     // correct stress
     sigma.noalias() = sigma_prev + Ke * (dw - dwp);
 
+    {
+        Eigen::VectorXd const sigma_s = sigma.head(DisplacementDim - 1);
+        double const mag_tau = sigma_s.norm();  // magnitude
+        double const Fsnew = mag_tau + sigma_n * std::tan(mat.phi) - mat.c;
+        std::cerr << "sigma updated Fs;\n"
+                  << sigma << "\nfor new Fs : " << Fsnew << "\n";
+        material_state_variables.setShearYieldFunctionValue(Fsnew);
+    }
+
     // Kep
-    Kep = Ke - Ke * dQs_dS * A;
+    // Kep = Ke - Ke * dQs_dS * A;
+    Kep = Ke;
+    Kep(0, 0) -= mat.Ks * mat.Ks;
+    Kep(1, 1) -= mat.Kn * mat.Kn * std::tan(mat.phi) * std::tan(mat.psi);
 }
 
 template class MohrCoulomb<2>;
