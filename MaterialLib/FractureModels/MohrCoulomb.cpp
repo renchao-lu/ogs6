@@ -102,8 +102,9 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
             */
         sigma.coeffRef(index_ns) *=
             logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
-        Ke(index_ns, index_ns) *=
+        /*Ke(index_ns, index_ns) *=
             logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
+            */
     }
 
     sigma.noalias() += sigma0;
@@ -134,6 +135,8 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         if (Fs < .0)
         {
             Kep = Ke;
+            Kep(index_ns, index_ns) *= logPenaltyDerivative(
+                aperture0, aperture, _penalty_aperture_cutoff);
             return;
         }
     }
@@ -182,7 +185,9 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
                  */
             state.w_p = state.w_p_prev +
                         solution[0] * plasticPotential_derivative(sigma);
-            sigma.noalias() = Ke * (w - state.w_p) + sigma0;
+            sigma.noalias() = sigma0 + (Ke * (w - state.w_p)) *
+                                           logPenalty(aperture0, aperture,
+                                                      _penalty_aperture_cutoff);
         };
 
         auto newton_solver =
@@ -207,6 +212,8 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         material_state_variables.setShearYieldFunctionValue(Fs);
     }
 
+    Ke(index_ns, index_ns) *=
+        logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
     Eigen::RowVectorXd const A = yieldFunction_derivative(sigma).transpose() *
                                  Ke /
                                  (yieldFunction_derivative(sigma).transpose() *
