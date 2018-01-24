@@ -95,11 +95,7 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
 
     double const aperture = w_n + aperture0;
 
-    // TODO (nagel) If needed add residual stiffness.
-    sigma.coeffRef(index_ns) =
-        mp.Kn * w_n * logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
-    std::cerr << "sigma " << sigma << "\n";
-    std::cerr << "w_n " << w_n << "\n";
+    state.damage = computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
 
     C(index_ns, index_ns) =
         mp.Kn *
