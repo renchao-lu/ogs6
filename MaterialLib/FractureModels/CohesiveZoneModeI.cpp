@@ -77,15 +77,17 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     assert(dynamic_cast<StateVariables<DisplacementDim> const*>(
                &material_state_variables) != nullptr);
 
-    StateVariables<DisplacementDim> state =
-        static_cast<StateVariables<DisplacementDim> const&>(
+    StateVariables<DisplacementDim>& state =
+        static_cast<StateVariables<DisplacementDim> &>(
             material_state_variables);
+    //reset damage in each iteration
     state.setInitialConditions();
 
     auto const mp = MaterialPropertyValues(_mp, t, x, aperture0);
 
     C.setZero();
 
+    //separately compute shear and normal stresses
     const int index_ns = DisplacementDim - 1;
     double const w_n = w[index_ns];
     for (int i = 0; i < index_ns; i++)
