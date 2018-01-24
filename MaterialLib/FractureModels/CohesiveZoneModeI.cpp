@@ -100,6 +100,7 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     state.damage = computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
 
     C(index_ns, index_ns) = mp.Kn * mp.w_np * (1 - state.damage) / (mp.w_np + (mp.w_nf - mp.w_np) * state.damage);
+
     /***
     C(index_ns, index_ns) =
         mp.Kn * logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
@@ -108,45 +109,17 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     sigma.coeffRef(index_ns) =
         C(index_ns, index_ns) * w_n ;//* logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
 
+    std::cerr << "damage " << state.damage << "\n";
+    std::cerr << "sigma " << sigma.coeffRef(index_ns) << "\n";
+    std::cerr << "w_n " << w_n << "\n";
+    std::cerr << "C " << C(index_ns, index_ns) << "\n";
+    /***
     if (w_n < 0)
     {
         return;  /// Undamaged stiffness used in compression.
     }
+    ***/
 
-    /*
-    C = C * 1e-10;
-    sigma = sigma * 0;
-    return;
-
-    */
-
-    state.damage = computeDamage(state.damage_prev, w_n, mp.w_np, mp.w_nf);
-    std::cerr << "w_nf / w_np " << mp.w_nf << "/" << mp.w_np << "\n";
-
-    if (state.damage > state.damage_prev)
-    {
-        // If damage is increasing, provide extension to consistent tangent.
-
-        Eigen::Matrix<double, DisplacementDim, 1> dd_dw =
-            Eigen::Matrix<double, DisplacementDim, 1>::Zero();
-        dd_dw[index_ns] = 1 / (mp.w_nf - mp.w_np);
-        std::cerr << "dd_dw " << dd_dw << "\n";
-
-        C(index_ns, index_ns) += mp.Kres;
-        // TODO (naumov) noalias
-        // C.noalias() = C * (1 - state.damage) - C * w * (dd_dw).transpose();
-        C = C * (1 - state.damage) - C * w * (dd_dw).transpose();
-    }
-    else
-    {
-        // Degrade stiffness tensor in tension.
-        C.noalias() = C * (1 - state.damage);
-    }
-
-    sigma.noalias() = sigma * (1 - state.damage);
-
-    std::cerr << "damage " << state.damage << "\n";
-    std::cerr << "exit sigma " << sigma << "\n";
     // TODO (nagel) Initial stress not considered, yet.
     // sigma.noalias() += sigma0;
 }
