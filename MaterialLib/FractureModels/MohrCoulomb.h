@@ -12,6 +12,7 @@
 #include <Eigen/Eigen>
 #include <utility>
 
+#include "NumLib/NewtonRaphson.h"
 #include "ProcessLib/Parameter/Parameter.h"
 
 #include "FractureModelBase.h"
@@ -30,13 +31,15 @@ struct StateVariables
 
     void pushBackState() override { w_p_prev = w_p; }
 
-    Eigen::Matrix<double, DisplacementDim, 1>
-        w_p;  ///< plastic component of
-              ///< the displacement jump
-              ///< in fracture's local coordinates.
+    Eigen::Matrix<double, DisplacementDim, 1> w_p =
+        Eigen::Matrix<double, DisplacementDim,
+                      1>::Zero();  ///< plastic component of
+                                   ///< the displacement jump
+                                   ///< in fracture's local coordinates.
 
     // Initial values from previous timestep
-    Eigen::Matrix<double, DisplacementDim, 1> w_p_prev;  ///< \copydoc w
+    Eigen::Matrix<double, DisplacementDim, 1> w_p_prev =
+        Eigen::Matrix<double, DisplacementDim, 1>::Zero();  ///< \copydoc w
 };
 
 template <int DisplacementDim>
@@ -84,10 +87,13 @@ public:
 
 
 public:
-    explicit MohrCoulomb(double const penalty_aperture_cutoff,
-                         bool const tension_cutoff,
-                         MaterialProperties material_properties)
-        : _penalty_aperture_cutoff(penalty_aperture_cutoff),
+    explicit MohrCoulomb(
+        NumLib::NewtonRaphsonSolverParameters nonlinear_solver_parameters,
+        double const penalty_aperture_cutoff,
+        bool const tension_cutoff,
+        MaterialProperties material_properties)
+        : _nonlinear_solver_parameters(std::move(nonlinear_solver_parameters)),
+          _penalty_aperture_cutoff(penalty_aperture_cutoff),
           _tension_cutoff(tension_cutoff),
           _mp(std::move(material_properties))
     {
@@ -127,6 +133,8 @@ public:
             material_state_variables) override;
 
 private:
+    NumLib::NewtonRaphsonSolverParameters const _nonlinear_solver_parameters;
+
     /// Compressive normal displacements above this value will not enter the
     /// computation of the normal stiffness modulus of the fracture.
     /// \note Setting this to the initial aperture value allows negative
