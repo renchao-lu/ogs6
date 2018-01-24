@@ -100,8 +100,11 @@ void CohesiveZoneModeI<DisplacementDim>::computeConstitutiveRelation(
     C(index_ns, index_ns) = mp.Kn * mp.w_np * (1 - state.damage) / (mp.w_np + (mp.w_nf - mp.w_np) * state.damage);
     /***
     C(index_ns, index_ns) =
-        mp.Kn *
-        logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
+        mp.Kn * logPenaltyDerivative(aperture0, aperture, _penalty_aperture_cutoff);
+    ***/
+
+    sigma.coeffRef(index_ns) =
+        C(index_ns, index_ns) * w_n ;//* logPenalty(aperture0, aperture, _penalty_aperture_cutoff);
 
     if (w_n < 0)
     {
