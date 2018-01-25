@@ -120,8 +120,6 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         // TODO; Update w_p for fracture opening and closing.
     }
 
-    // check shear yield function (Fs)
-
     auto yieldFunction = [&mat](Eigen::VectorXd const& s) {
         double const sigma_n = s[DisplacementDim - 1];
         Eigen::VectorXd const sigma_s = s.head(DisplacementDim - 1);
@@ -129,7 +127,7 @@ void MohrCoulomb<DisplacementDim>::computeConstitutiveRelation(
         return mag_tau + sigma_n * std::tan(mat.phi) - mat.c;
     };
 
-    {  // Exit if still in elastic range.
+    {  // Exit if still in elastic range by checking the shear yield function.
         double const Fs = yieldFunction(sigma);
         material_state_variables.setShearYieldFunctionValue(Fs);
         if (Fs < .0)

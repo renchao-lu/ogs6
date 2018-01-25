@@ -39,7 +39,7 @@ struct StateVariables
 
     // Initial values from previous timestep
     Eigen::Matrix<double, DisplacementDim, 1> w_p_prev =
-        Eigen::Matrix<double, DisplacementDim, 1>::Zero();  ///< \copydoc w
+        Eigen::Matrix<double, DisplacementDim, 1>::Zero();  ///< \copydoc w_p
 };
 
 template <int DisplacementDim>
