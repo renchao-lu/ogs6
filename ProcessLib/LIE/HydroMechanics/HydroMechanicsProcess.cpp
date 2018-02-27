@@ -405,6 +405,18 @@ void HydroMechanicsProcess<GlobalDim>::initializeConcreteProcess(
             MeshLib::MeshItemType::Node, 1);
         mesh_prop_nodal_p->resize(mesh.getNumberOfNodes());
         _process_data.mesh_prop_nodal_p = mesh_prop_nodal_p;
+
+        auto mesh_prop_pressure = MeshLib::getOrCreateMeshProperty<double>(
+            const_cast<MeshLib::Mesh&>(mesh), "_process_data.pressure",
+            MeshLib::MeshItemType::Cell, 1);
+        mesh_prop_pressure->resize(mesh.getNumberOfElements());
+        _process_data.mesh_prop_pressure = mesh_prop_pressure;
+
+        auto mesh_prop_d = MeshLib::getOrCreateMeshProperty<double>(
+            const_cast<MeshLib::Mesh&>(mesh), "damage",
+            MeshLib::MeshItemType::Cell, 1);
+        mesh_prop_d->resize(mesh.getNumberOfElements());
+        _process_data.mesh_prop_d = mesh_prop_d;
     }
 }
 
