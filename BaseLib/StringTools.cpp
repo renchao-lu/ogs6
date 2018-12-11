@@ -20,8 +20,8 @@
 #include <cstdio>
 #include <iomanip>
 
-#include <logog/include/logog.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include "Logging.h"
 
 namespace BaseLib
 {
