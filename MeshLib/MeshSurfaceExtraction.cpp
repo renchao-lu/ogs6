@@ -235,19 +235,41 @@ void MeshSurfaceExtraction::get2DSurfaceElements(
 
         if (element_dimension == 2)
         {
-            if (!complete_surface)
+            if (!elem->isBoundaryElement())
             {
-                auto const* face = elem;
-                if (MathLib::scalarProduct(
-                        FaceRule::getSurfaceNormal(face).getNormalizedVector(),
-                        norm_dir) > cos_theta)
+                continue;
+            }
+
+            auto const inward_normal_vector =
+                FaceRule::getSurfaceNormal(elem).getNormalizedVector();
+            const unsigned nEdges(elem->getNumberOfEdges());
+            for (unsigned j = 0; j < nEdges; ++j)
+            {
+                if (elem->getNeighbor(j) != nullptr)
                 {
                     continue;
                 }
+
+                auto const edge =
+                    std::unique_ptr<MeshLib::Element const>{elem->getEdge(j)};
+                if (!complete_surface)
+                {
+                    if (MathLib::scalarProduct(
+                            EdgeRule::getNormalVector(edge.get(),
+                                                      inward_normal_vector)
+                                .getNormalizedVector(),
+                            norm_dir) < cos_theta)
+                    {
+                        continue;
+                    }
+                }
+
+                sfc_elements.push_back(new MeshLib::Line(
+                    *static_cast<const MeshLib::Line*>(edge.get())));
+
+                element_to_bulk_element_id_map.push_back(elem->getID());
+                element_to_bulk_face_id_map.push_back(j);
             }
-            sfc_elements.push_back(elem->clone());
-            element_to_bulk_element_id_map.push_back(elem->getID());
-            element_to_bulk_face_id_map.push_back(0);
         }
         else
         {
@@ -359,6 +381,9 @@ std::vector<MeshLib::Element*> MeshSurfaceExtraction::createSfcElementVector(
         }
         switch (sfc_element->getGeomType())
         {
+            case MeshElemType::LINE:
+                new_elements.push_back(new MeshLib::Line(new_nodes));
+                break;
             case MeshElemType::TRIANGLE:
                 new_elements.push_back(new MeshLib::Tri(new_nodes));
                 break;
@@ -372,6 +397,7 @@ std::vector<MeshLib::Element*> MeshSurfaceExtraction::createSfcElementVector(
                     MeshElemType2String(sfc_element->getGeomType()).c_str());
         }
     }
+
     return new_elements;
 }
 
