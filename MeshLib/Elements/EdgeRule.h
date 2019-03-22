@@ -9,6 +9,9 @@
 
 #pragma once
 
+#include "MathLib/Vector3.h"
+#include "MeshLib/Node.h"
+
 namespace MeshLib
 {
 
@@ -35,6 +38,16 @@ public:
     */
     static bool testElementNodeOrder(const Element* /*e*/) { return true; }
 
+    /// Returns a normal vector perpendicular to the edge.
+    /// inward_normal_vector the inward normal vector normal to a surface that
+    /// the edge pertains to.
+    static MathLib::Vector3 getNormalVector(
+        const Element* e, MathLib::Vector3 inward_normal_vector)
+    {
+        Node* const* const _nodes = e->getNodes();
+        MathLib::Vector3 directed_edge = {*_nodes[1], *_nodes[0]};
+        return MathLib::crossProduct(inward_normal_vector, directed_edge);
+    }
 }; /* class */
 
 }  // namespace MeshLib
