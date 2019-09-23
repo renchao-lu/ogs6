@@ -138,11 +138,11 @@
                 <time_stepping>
                     <type>FixedTimeStepping</type>
                     <t_initial> 0.0 </t_initial>
-                    <t_end> 94608000 </t_end>
+                    <t_end> 31536000 </t_end>
                     <timesteps>
                         <pair>
-                            <repeat>100</repeat>
-                            <delta_t>946080</delta_t>
+                            <repeat>365</repeat>
+                            <delta_t>86400</delta_t>
                         </pair>
                     </timesteps>
                 </time_stepping>
@@ -160,11 +160,11 @@
                 <time_stepping>
                     <type>FixedTimeStepping</type>
                     <t_initial> 0.0 </t_initial>
-                    <t_end> 94608000 </t_end>
+                    <t_end> 31536000 </t_end>
                     <timesteps>
                         <pair>
-                            <repeat>100</repeat>
-                            <delta_t>946080</delta_t>
+                            <repeat>365</repeat>
+                            <delta_t>86400</delta_t>
                         </pair>
                     </timesteps>
                 </time_stepping>
@@ -175,7 +175,7 @@
             <prefix>DiffusionThermalGradient</prefix>
             <timesteps>
                 <pair>
-                    <repeat> 20 </repeat>
+                    <repeat> 73 </repeat>
                     <each_steps> 5 </each_steps>
                 </pair>
             </timesteps>
@@ -190,7 +190,7 @@
         <parameter>
             <name>T0</name>
             <type>Constant</type>
-            <value>298.15</value>
+            <value>289.15</value>
         </parameter>
         <parameter>
             <name>T_Borehole</name>
