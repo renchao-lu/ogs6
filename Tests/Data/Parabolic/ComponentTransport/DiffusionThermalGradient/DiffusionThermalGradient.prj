@@ -47,7 +47,7 @@
                         <property>
                             <name>specific_heat_capacity</name>
                             <type>Constant</type>
-                            <value>4000</value>
+                            <value>4200</value>
                         </property>
                         <property>
                             <name>thermal_conductivity</name>
@@ -77,17 +77,17 @@
                         <property>
                             <name>density</name>
                             <type>Constant</type>
-                            <value>2700</value>
+                            <value>2720</value>
                         </property>
                         <property>
                             <name>thermal_conductivity</name>
                             <type>Constant</type>
-                            <value>2.2</value>
+                            <value>0.955</value>
                         </property>
                         <property>
                             <name>specific_heat_capacity</name>
                             <type>Constant</type>
-                            <value>1040</value>
+                            <value>800</value>
                         </property>
                     </properties>
                 </phase>
