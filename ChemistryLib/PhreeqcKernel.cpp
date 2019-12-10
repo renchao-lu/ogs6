@@ -27,6 +27,8 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
                                  process_id_to_component_name_map,
                              std::string const database,
                              AqueousSolution aqueous_solution,
+                             std::unique_ptr<Equilibriums>
+                                 equilibrium_phases,
                              std::unique_ptr<Kinetics>
                                  kinetic_reactants,
                              std::vector<ReactionRate>&& reaction_rates)
