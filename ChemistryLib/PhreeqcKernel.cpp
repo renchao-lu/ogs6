@@ -27,12 +27,11 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
                                  process_id_to_component_name_map,
                              std::string const database,
                              AqueousSolution aqueous_solution,
-                             std::unique_ptr<Equilibriums>
-                                 equilibrium_phases,
-                             std::unique_ptr<Kinetics>
-                                 kinetic_reactants,
+                             std::unique_ptr<Equilibriums>&& equilibrium_phases,
+                             std::unique_ptr<Kinetics>&& kinetic_reactants,
                              std::vector<ReactionRate>&& reaction_rates)
     : _initial_aqueous_solution(aqueous_solution.getInitialAqueousSolution()),
+      _aqueous_solution(aqueous_solution.castToBaseClassNoninitialized()),
       _reaction_rates(std::move(reaction_rates))
 {
     initializePhreeqcGeneralSettings();
@@ -50,8 +49,22 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
     }
     use.Set_solution_in(true);
 
+    // equilibrium phase
+    if (equilibrium_phases)
+    {
+        for (std::size_t chemical_system_id = 0;
+             chemical_system_id < num_chemical_systems;
+             ++chemical_system_id)
+        {
+            equilibrium_phases->setChemicalSystemID(chemical_system_id);
+            Rxn_pp_assemblage_map.emplace(
+                chemical_system_id, *equilibrium_phases->castToBaseClass());
+        }
+        use.Set_pp_assemblage_in(true);
+    }
+
     // kinetics
-    if (kinetic_reactants->isKineticReactantDefined())
+    if (kinetic_reactants)
     {
         for (std::size_t chemical_system_id = 0;
              chemical_system_id < num_chemical_systems;
@@ -168,6 +181,10 @@ void PhreeqcKernel::setAqueousSolutions(
                 // Set pH value by hydrogen concentration.
                 double const pH = -std::log10(concentration);
                 aqueous_solution.Set_ph(pH);
+                if (components.find("H(1)") != components.end())
+                {
+                    components["H(1)"].Set_input_conc(pH);
+                }
             }
             else
             {
@@ -211,6 +228,13 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
         new_solution = 1;
         use.Set_n_solution_user(chemical_system_id);
 
+        if (!Rxn_pp_assemblage_map.empty())
+        {
+            Rxn_new_pp_assemblage.insert(chemical_system_id);
+            use.Set_pp_assemblage_in(true);
+            use.Set_n_pp_assemblage_user(chemical_system_id);
+        }
+
         if (!Rxn_kinetics_map.empty())
         {
             use.Set_kinetics_in(true);
@@ -225,13 +249,27 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
 
         // Clean up
         Rxn_new_solution.clear();
-        Rxn_solution_map[chemical_system_id].Get_totals().clear();
+        Rxn_solution_map[chemical_system_id] = *_aqueous_solution;
+        Rxn_solution_map[chemical_system_id].Set_n_user_both(
+            chemical_system_id);
+        Rxn_solution_map[chemical_system_id].Set_pe(-3.919245);
+
+        if (!Rxn_pp_assemblage_map.empty())
+        {
+            Rxn_new_pp_assemblage.clear();
+        }
 
         if (!Rxn_kinetics_map.empty())
         {
             Rxn_kinetics_map[chemical_system_id].Get_steps().clear();
         }
     }
+}
+
+void PhreeqcKernel::executeInitialCalculation(
+    std::vector<GlobalVector*>& process_solutions)
+{
+    //    execute(process_solutions);
 }
 
 void PhreeqcKernel::updateNodalProcessSolutions(
@@ -257,7 +295,9 @@ void PhreeqcKernel::updateNodalProcessSolutions(
         {
             // Update solutions of component transport processes.
             auto const concentration =
-                master_species->total_primary / mass_water_aq_x;
+                master_species->primary
+                    ? master_species->total_primary / mass_water_aq_x
+                    : master_species->total / mass_water_aq_x;
             transport_process_solution->set(node_id, concentration);
         }
     }

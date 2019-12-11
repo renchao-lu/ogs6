@@ -37,16 +37,12 @@ public:
                       process_id_to_component_name_map,
                   std::string const database,
                   AqueousSolution aqueous_solution,
-                  std::unique_ptr<Equilibriums>
-                      equilibrium_phases,
-                  std::unique_ptr<Kinetics>
-                      kinetic_reactants,
+                  std::unique_ptr<Equilibriums>&& equilibrium_phases,
+                  std::unique_ptr<Kinetics>&& kinetic_reactants,
                   std::vector<ReactionRate>&& reaction_rates);
 
     void executeInitialCalculation(
-        std::vector<GlobalVector*>& /*process_solutions*/) override
-    {
-    }
+        std::vector<GlobalVector*>& process_solutions) override;
 
     void doWaterChemistryCalculation(
         std::vector<GlobalVector*>& process_solutions,
@@ -84,6 +80,7 @@ private:
 
     std::map<int, struct master*> _process_id_to_master_map;
     std::unique_ptr<cxxISolution const> _initial_aqueous_solution;
+    std::unique_ptr<cxxSolution const> _aqueous_solution;
     std::vector<ReactionRate> const _reaction_rates;
 };
 }  // namespace PhreeqcKernelData
