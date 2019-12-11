@@ -21,7 +21,6 @@ EquilibriumPhase::EquilibriumPhase(std::string&& phase_name,
                                    double const saturation_index)
 {
     name = phase_name;
-    initial_moles = initial_amount;
     moles = initial_amount;
     si = saturation_index;
     si_org = saturation_index;
@@ -29,7 +28,7 @@ EquilibriumPhase::EquilibriumPhase(std::string&& phase_name,
 
 Equilibriums::Equilibriums(std::vector<EquilibriumPhase>& equilibrium_phases)
 {
-    new_def = true;
+    // new_def = true;
     for (auto& equilibrium_phase : equilibrium_phases)
     {
         auto name = equilibrium_phase.getName();
