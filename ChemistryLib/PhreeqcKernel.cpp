@@ -57,9 +57,24 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
              ++chemical_system_id)
         {
             equilibrium_phases->setChemicalSystemID(chemical_system_id);
-            Rxn_pp_assemblage_map.emplace(
-                chemical_system_id, *equilibrium_phases->castToBaseClass());
+            // type conversion
+            auto pp = equilibrium_phases->castToBaseClass();
+            for (auto const& equilibrium_phase : pp->Get_pp_assemblage_comps())
+            {
+                int k;
+                count_elts = 0;
+                struct phase* phase_ptr =
+                    phase_bsearch(equilibrium_phase.first.c_str(), &k, FALSE);
+                double coef = 1.0;
+                add_elt_list(phase_ptr->next_elt, coef);
+            }
+
+            cxxNameDouble nd = elt_list_NameDouble();
+            const_cast<cxxPPassemblage*>(pp)->Set_eltList(nd);
+
+            Rxn_pp_assemblage_map.emplace(chemical_system_id, *pp);
         }
+
         use.Set_pp_assemblage_in(true);
     }
 
@@ -249,14 +264,25 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
 
         // Clean up
         Rxn_new_solution.clear();
-        Rxn_solution_map[chemical_system_id] = *_aqueous_solution;
-        Rxn_solution_map[chemical_system_id].Set_n_user_both(
-            chemical_system_id);
-        Rxn_solution_map[chemical_system_id].Set_pe(-3.919245);
+        // Reset solution
+        {
+            Rxn_solution_map[chemical_system_id] = *_aqueous_solution;
+            Rxn_solution_map[chemical_system_id].Set_n_user_both(
+                chemical_system_id);
+            Rxn_solution_map[chemical_system_id].Set_pe(-s_eminus->la);
+        }
 
         if (!Rxn_pp_assemblage_map.empty())
         {
             Rxn_new_pp_assemblage.clear();
+            for (int j = 0; j < count_unknowns; j++)
+            {
+                if (x == NULL || x[j]->type != PP)
+                    continue;
+                auto& pp = Rxn_pp_assemblage_map[chemical_system_id]
+                               .Get_pp_assemblage_comps();
+                pp[x[j]->pp_assemblage_comp_name].Set_moles(x[j]->moles);
+            }
         }
 
         if (!Rxn_kinetics_map.empty())
