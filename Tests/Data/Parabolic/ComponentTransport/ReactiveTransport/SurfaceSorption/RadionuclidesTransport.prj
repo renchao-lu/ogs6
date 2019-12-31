@@ -778,7 +778,7 @@
             </variables>
         </output>
     </time_loop>
-    <chemical_system chemical_solver="Phreeqc">
+    <chemical_system chemical_solver="PhreeqcKernel">
         <database>ESTRALdata_20120312_FINAL_GEH.dat</database>
         <solution>
             <temperature>14</temperature>
