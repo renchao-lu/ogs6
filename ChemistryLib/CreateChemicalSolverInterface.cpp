@@ -32,6 +32,7 @@
 #include "PhreeqcKernelData/CreateAqueousSolution.h"
 #include "PhreeqcKernelData/CreateEquilibriumPhase.h"
 #include "PhreeqcKernelData/CreateKineticReactant.h"
+#include "PhreeqcKernelData/CreateSurface.h"
 #include "PhreeqcKernelData/ReactionRate.h"
 
 #include "ThirdParty/iphreeqc/src/src/phreeqcpp/cxxKinetics.h"
@@ -167,6 +168,11 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
     auto equilibrium_phases = PhreeqcKernelData::createEquilibriumPhases(
         //! \ogs_file_param{prj__chemical_system__equilibrium_phases}
         config.getConfigSubtreeOptional("equilibrium_phases"), mesh);
+
+    // surface
+    auto surface = PhreeqcKernelData::createSurface(
+                //! \ogs_file_param{prj__chemical_system__surface}
+                config.getConfigSubtreeOptional("surface"));
 
     return std::make_unique<PhreeqcKernelData::PhreeqcKernel>(
         mesh.getNumberOfBaseNodes(), process_id_to_component_name_map,
