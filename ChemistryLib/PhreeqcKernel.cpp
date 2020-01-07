@@ -94,6 +94,13 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
 
     reinitializeRates();
 
+    // Surface
+//    if (use.Get_surface_in() == FALSE)
+//	{
+//		use.Set_surface_in(true);
+//		use.Set_n_surface_user(n_user);
+//	}
+
     setConvergenceTolerance();
 
     configureOutputSettings();

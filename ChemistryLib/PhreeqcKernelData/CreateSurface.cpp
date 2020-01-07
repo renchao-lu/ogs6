@@ -11,7 +11,7 @@
 #include <boost/optional/optional.hpp>
 
 #include "BaseLib/ConfigTree.h"
-//#include "Surface.h"
+#include "Surface.h"
 
 namespace ChemistryLib
 {
@@ -26,6 +26,8 @@ std::vector<double> createSurface(
     }
 
     std::vector<double> surface;
+    std::vector<SurfaceComponent> surface_components;
+    std::vector<SurfaceCharge> surface_charges;
     for (auto const& site_config :
          //! \ogs_file_param{prj__chemical_system__surface__site}
          config->getConfigSubtreeList("site"))
@@ -45,8 +47,8 @@ std::vector<double> createSurface(
             //! \ogs_file_param{prj__chemical_system__surface__site__mass}
             site_config.getConfigParameter<double>("mass");
 
-//        surface.emplace_back(
-//            std::move(name), site_density, specific_surface_area, mass);
+        surface_components.emplace_back(
+            std::move(name), site_density, specific_surface_area, mass);
     }
 
     return surface;
