@@ -28,6 +28,7 @@ namespace PhreeqcKernelData
 {
 class AqueousSolution;
 class ReactionRate;
+class Surface;
 
 class PhreeqcKernel final : public ChemicalSolverInterface, private Phreeqc
 {
@@ -39,7 +40,8 @@ public:
                   AqueousSolution aqueous_solution,
                   std::unique_ptr<Equilibriums>&& equilibrium_phases,
                   std::unique_ptr<Kinetics>&& kinetic_reactants,
-                  std::vector<ReactionRate>&& reaction_rates);
+                  std::vector<ReactionRate>&& reaction_rates,
+                  std::unique_ptr<Surface>&& surface);
 
     void executeInitialCalculation(
         std::vector<GlobalVector*>& process_solutions) override;

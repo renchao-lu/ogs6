@@ -29,7 +29,8 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
                              AqueousSolution aqueous_solution,
                              std::unique_ptr<Equilibriums>&& equilibrium_phases,
                              std::unique_ptr<Kinetics>&& kinetic_reactants,
-                             std::vector<ReactionRate>&& reaction_rates)
+                             std::vector<ReactionRate>&& reaction_rates,
+                             std::unique_ptr<Surface>&& surface)
     : _initial_aqueous_solution(aqueous_solution.getInitialAqueousSolution()),
       _aqueous_solution(aqueous_solution.castToBaseClassNoninitialized()),
       _reaction_rates(std::move(reaction_rates))
@@ -100,6 +101,14 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
 //		use.Set_surface_in(true);
 //		use.Set_n_surface_user(n_user);
 //	}
+//    temp_surface.Set_solution_equilibria(true);
+//    temp_surface.Set_n_solution(j);
+
+//    get_elts_in_species(&formula, moles);
+//    cxxNameDouble nd = elt_list_NameDouble();
+//    comp_ptr->Set_totals(nd);
+    // Sort comps and charge
+//    temp_surface.Sort_comps();
 
     setConvergenceTolerance();
 

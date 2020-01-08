@@ -32,6 +32,7 @@
 #include "PhreeqcKernelData/CreateAqueousSolution.h"
 #include "PhreeqcKernelData/CreateEquilibriumPhase.h"
 #include "PhreeqcKernelData/CreateKineticReactant.h"
+#include "PhreeqcKernelData/Surface.h"
 #include "PhreeqcKernelData/CreateSurface.h"
 #include "PhreeqcKernelData/ReactionRate.h"
 
@@ -178,6 +179,6 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
         mesh.getNumberOfBaseNodes(), process_id_to_component_name_map,
         std::move(path_to_database), std::move(aqueous_solution),
         std::move(equilibrium_phases), std::move(kinetic_reactants),
-        std::move(reaction_rates));
+        std::move(reaction_rates), std::move(surface));
 }
 }  // namespace ChemistryLib

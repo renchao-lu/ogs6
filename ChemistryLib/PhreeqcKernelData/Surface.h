@@ -21,22 +21,32 @@ namespace PhreeqcKernelData
 class SurfaceCharge final : private cxxSurfaceCharge
 {
 public:
-    SurfaceCharge();
+    SurfaceCharge(double const specific_surface_area,
+                  double const mass);
+
+    cxxSurfaceCharge const* castToBaseClass() const
+    {
+        return static_cast<cxxSurfaceCharge const*>(this);
+    }
 };
 
 class SurfaceComponent final : private cxxSurfaceComp
 {
 public:
     SurfaceComponent(std::string const& site_name,
-                     double const site_density,
-                     double const specific_surface_area,
-                     double const mass);
+                     double const site_density);
+
+    cxxSurfaceComp const* castToBaseClass() const
+    {
+        return static_cast<cxxSurfaceComp const*>(this);
+    }
 };
 
 class Surface final : private cxxSurface
 {
 public:
-    Surface(std::vector<double> const& surf);
+    Surface(std::vector<SurfaceComponent> surface_components,
+            std::vector<SurfaceCharge> surface_charges_);
 };
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib
