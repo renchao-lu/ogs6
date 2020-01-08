@@ -12,6 +12,7 @@
 
 #include <boost/optional/optional_fwd.hpp>
 #include <vector>
+#include <memory>
 
 namespace BaseLib
 {
@@ -22,9 +23,9 @@ namespace ChemistryLib
 {
 namespace PhreeqcKernelData
 {
-//struct SurfaceSite;
+class Surface;
 
-std::vector<double> createSurface(
+std::unique_ptr<Surface> createSurface(
     boost::optional<BaseLib::ConfigTree> const& config);
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib

@@ -11,21 +11,21 @@
 #include <boost/optional/optional.hpp>
 
 #include "BaseLib/ConfigTree.h"
+#include "CreateSurface.h"
 #include "Surface.h"
 
 namespace ChemistryLib
 {
 namespace PhreeqcKernelData
 {
-std::vector<double> createSurface(
+std::unique_ptr<Surface> createSurface(
     boost::optional<BaseLib::ConfigTree> const& config)
 {
     if (!config)
     {
-        return {};
+        return nullptr;
     }
 
-    std::vector<double> surface;
     std::vector<SurfaceComponent> surface_components;
     std::vector<SurfaceCharge> surface_charges;
     for (auto const& site_config :
@@ -47,11 +47,12 @@ std::vector<double> createSurface(
             //! \ogs_file_param{prj__chemical_system__surface__site__mass}
             site_config.getConfigParameter<double>("mass");
 
-        surface_components.emplace_back(
-            std::move(name), site_density, specific_surface_area, mass);
+        surface_components.emplace_back(std::move(name), site_density);
+
+        surface_charges.emplace_back(specific_surface_area, mass);
     }
 
-    return surface;
+    return std::make_unique<Surface>(surface_components, surface_charges);
 }
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib
