@@ -96,19 +96,43 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
     reinitializeRates();
 
     // Surface
+    if (surface)
+    {
+        use.Set_surface_in(true);
+        auto& surface_components = surface->castToBaseClass()->Get_surface_comps();
+        auto& surface_charges = surface->castToBaseClass()->Get_surface_charges();
+        for (auto i = 0; i < surface_components.size(); ++i)
+        {
+            auto const& formula = surface_components[i].Get_formula();
+            auto const moles = surface_components[i].Get_moles();
+            getElementsInSpecies(formula, moles);
+
+            auto nd = getElementListNameDouble();
+            surface_components[i].Set_totals(nd);
+
+            auto element_name = getElement(formula);
+            surface_components[i].Set_charge_name(element_name);
+            surface_charges[i].Set_name(element_name);
+        }
+
+        for (std::size_t chemical_system_id = 0;
+             chemical_system_id < num_chemical_systems;
+             ++chemical_system_id)
+        {
+            surface->setChemicalSystemID(chemical_system_id);
+            surface->equilibrateWithSolution(true, chemical_system_id);
+            // Sort comps and charge
+            surface->sort();
+            Rxn_surface_map.emplace(chemical_system_id,
+                                    *surface->castToBaseClass());
+        }
+    }
+//    Rxn_surface_map[n_user] = temp_surface;
+//	Rxn_new_surface.insert(n_user);
 //    if (use.Get_surface_in() == FALSE)
 //	{
-//		use.Set_surface_in(true);
 //		use.Set_n_surface_user(n_user);
 //	}
-//    temp_surface.Set_solution_equilibria(true);
-//    temp_surface.Set_n_solution(j);
-
-//    get_elts_in_species(&formula, moles);
-//    cxxNameDouble nd = elt_list_NameDouble();
-//    comp_ptr->Set_totals(nd);
-    // Sort comps and charge
-//    temp_surface.Sort_comps();
 
     setConvergenceTolerance();
 

@@ -16,6 +16,7 @@
 #include "ChemicalSolverInterface.h"
 #include "PhreeqcKernelData/EquilibriumPhase.h"
 #include "PhreeqcKernelData/KineticReactant.h"
+#include "PhreeqcKernelData/Surface.h"
 
 #include "ThirdParty/iphreeqc/src/src/phreeqcpp/Phreeqc.h"
 
@@ -28,7 +29,6 @@ namespace PhreeqcKernelData
 {
 class AqueousSolution;
 class ReactionRate;
-class Surface;
 
 class PhreeqcKernel final : public ChemicalSolverInterface, private Phreeqc
 {
@@ -65,6 +65,28 @@ private:
     void loadDatabase(std::string const& database);
 
     void reinitializeRates();
+
+    void getElementsInSpecies(std::string formula, double moles)
+    {
+        char *formula_char = string_duplicate(formula.c_str());
+        get_elts_in_species(&formula_char, moles);
+    }
+
+    char* getElement(std::string formula)
+    {
+        char *formula_char = string_duplicate(formula.c_str());
+        char *name = string_duplicate(formula.c_str());
+        name[0] = '\0';
+        int l = formula.size();
+
+        get_elt(&formula_char, name, &l);
+        return name;
+    }
+
+    cxxNameDouble getElementListNameDouble()
+    {
+        return elt_list_NameDouble();
+    }
 
     void setConvergenceTolerance() { convergence_tolerance = 1e-12; }
 
