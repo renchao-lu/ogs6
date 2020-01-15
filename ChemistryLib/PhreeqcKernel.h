@@ -68,6 +68,8 @@ private:
 
     void getElementsInSpecies(std::string formula, double moles)
     {
+        count_elts = 0;
+        paren_count = 0;
         char *formula_char = string_duplicate(formula.c_str());
         get_elts_in_species(&formula_char, moles);
     }
@@ -88,7 +90,19 @@ private:
         return elt_list_NameDouble();
     }
 
-    void setConvergenceTolerance() { convergence_tolerance = 1e-12; }
+    void setConvergenceTolerance()
+    {
+        convergence_tolerance = 1e-12;
+
+        // knobs
+        {
+            itmax = 250;
+            convergence_tolerance = 1e-6;
+            ineq_tol = 1e-20;
+            step_size = 5;
+            diagonal_scale = 1;
+        }
+    }
 
     void configureOutputSettings() { pr.all = false; }
 
@@ -105,7 +119,9 @@ private:
     std::map<int, struct master*> _process_id_to_master_map;
     std::unique_ptr<cxxISolution const> _initial_aqueous_solution;
     std::unique_ptr<cxxSolution const> _aqueous_solution;
+    std::unique_ptr<cxxSurface const> _surface;
     std::vector<ReactionRate> const _reaction_rates;
+    bool initial_step = true;
 };
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib

@@ -115,24 +115,19 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
             surface_charges[i].Set_name(element_name);
         }
 
+        // Sort comps and charge
+        surface->sort();
+        _surface = std::make_unique<cxxSurface const>(*surface->castToBaseClass());
+
         for (std::size_t chemical_system_id = 0;
              chemical_system_id < num_chemical_systems;
              ++chemical_system_id)
         {
             surface->setChemicalSystemID(chemical_system_id);
             surface->equilibrateWithSolution(true, chemical_system_id);
-            // Sort comps and charge
-            surface->sort();
-            Rxn_surface_map.emplace(chemical_system_id,
-                                    *surface->castToBaseClass());
+            Rxn_surface_map[chemical_system_id] = *surface->castToBaseClass();
         }
     }
-//    Rxn_surface_map[n_user] = temp_surface;
-//	Rxn_new_surface.insert(n_user);
-//    if (use.Get_surface_in() == FALSE)
-//	{
-//		use.Set_n_surface_user(n_user);
-//	}
 
     setConvergenceTolerance();
 
@@ -280,6 +275,12 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
          ++chemical_system_id)
     {
         Rxn_new_solution.insert(chemical_system_id);
+        if (initial_step == false && !Rxn_surface_map.empty())
+        {
+            Rxn_new_solution.insert(
+                        chemical_system_id + num_chemical_systems);
+        }
+
         new_solution = 1;
         use.Set_n_solution_user(chemical_system_id);
 
@@ -296,7 +297,27 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
             use.Set_n_kinetics_user(chemical_system_id);
         }
 
+        if (!Rxn_surface_map.empty())
+        {
+            Rxn_new_surface.insert(chemical_system_id);
+            use.Set_n_surface_user(chemical_system_id);
+            tidy_surface();
+
+        }
+
         initial_solutions(false);
+
+        if (!Rxn_surface_map.empty())
+        {
+            initial_surfaces(false);
+
+            if (initial_step == false)
+            {
+                save.n_solution_user = chemical_system_id;
+                save.n_solution_user_end = chemical_system_id;
+                save.solution = 1;
+            }
+        }
 
         reactions();
 
@@ -306,6 +327,14 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
         Rxn_new_solution.clear();
         // Reset solution
         {
+            if (!Rxn_surface_map.empty())
+            {
+                Rxn_solution_map[chemical_system_id + num_chemical_systems]
+                        = Rxn_solution_map[chemical_system_id];
+                Rxn_solution_map[chemical_system_id + num_chemical_systems]
+                        .Set_n_user_both(chemical_system_id + num_chemical_systems);
+            }
+
             Rxn_solution_map[chemical_system_id] = *_aqueous_solution;
             Rxn_solution_map[chemical_system_id].Set_n_user_both(
                 chemical_system_id);
@@ -329,13 +358,32 @@ void PhreeqcKernel::execute(std::vector<GlobalVector*>& process_solutions)
         {
             Rxn_kinetics_map[chemical_system_id].Get_steps().clear();
         }
+
+        if (!Rxn_surface_map.empty())
+        {
+            Rxn_new_surface.clear();
+
+            // reset surface
+            {
+                Rxn_surface_map[chemical_system_id] = *_surface;
+                Rxn_surface_map[chemical_system_id]
+                        .Set_n_user_both(chemical_system_id);
+                Rxn_surface_map[chemical_system_id].Set_solution_equilibria(true);
+                Rxn_surface_map[chemical_system_id].Set_n_solution(
+                        chemical_system_id + num_chemical_systems);
+            }
+        }
     }
 }
 
 void PhreeqcKernel::executeInitialCalculation(
     std::vector<GlobalVector*>& process_solutions)
 {
-    //    execute(process_solutions);
+    setAqueousSolutions(process_solutions);
+
+    execute(process_solutions);
+
+    initial_step = false;
 }
 
 void PhreeqcKernel::updateNodalProcessSolutions(
