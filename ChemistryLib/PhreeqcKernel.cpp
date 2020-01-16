@@ -15,6 +15,7 @@
 #include "PhreeqcKernel.h"
 #include "PhreeqcKernelData/AqueousSolution.h"
 #include "PhreeqcKernelData/ReactionRate.h"
+#include "Common/Knobs.h"
 
 #include "ThirdParty/iphreeqc/src/src/phreeqcpp/cxxKinetics.h"
 
@@ -30,7 +31,8 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
                              std::unique_ptr<Equilibriums>&& equilibrium_phases,
                              std::unique_ptr<Kinetics>&& kinetic_reactants,
                              std::vector<ReactionRate>&& reaction_rates,
-                             std::unique_ptr<Surface>&& surface)
+                             std::unique_ptr<Surface>&& surface,
+                             ChemistryLib::Knobs knobs)
     : _initial_aqueous_solution(aqueous_solution.getInitialAqueousSolution()),
       _aqueous_solution(aqueous_solution.castToBaseClassNoninitialized()),
       _reaction_rates(std::move(reaction_rates))
@@ -129,7 +131,7 @@ PhreeqcKernel::PhreeqcKernel(std::size_t const num_chemical_systems,
         }
     }
 
-    setConvergenceTolerance();
+    configureNumericalSettings(knobs);
 
     configureOutputSettings();
 
@@ -186,6 +188,15 @@ void PhreeqcKernel::reinitializeRates()
 
         ++rate_id;
     };
+}
+
+void PhreeqcKernel::configureNumericalSettings(Knobs const& knobs)
+{
+    itmax = knobs.max_iterations;
+    convergence_tolerance = knobs.relative_convergence_tolerance;
+    ineq_tol = knobs.tolerance;
+    step_size = knobs.step_size;
+    diagonal_scale = knobs.scaling;
 }
 
 void PhreeqcKernel::doWaterChemistryCalculation(

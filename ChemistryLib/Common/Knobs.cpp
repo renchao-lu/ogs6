@@ -14,8 +14,6 @@
 
 namespace ChemistryLib
 {
-namespace PhreeqcIOData
-{
 std::ostream& operator<<(std::ostream& os, Knobs const& knobs)
 {
     os << "KNOBS" << "\n";
@@ -28,5 +26,4 @@ std::ostream& operator<<(std::ostream& os, Knobs const& knobs)
 
     return os;
 }
-}  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

@@ -17,10 +17,7 @@ class ConfigTree;
 
 namespace ChemistryLib
 {
-namespace PhreeqcIOData
-{
 struct Knobs;
 
 Knobs createKnobs(BaseLib::ConfigTree const& config);
-}  // namespace PhreeqcIOData
 }  // namespace ChemistryLib
