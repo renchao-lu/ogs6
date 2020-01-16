@@ -10,20 +10,20 @@
 
 #include "CreateChemicalSolverInterface.h"
 #include "Common/CreateReactionRate.h"
+#include "Common/CreateKnobs.h"
+#include "Common/Knobs.h"
 #include "MeshLib/Mesh.h"
 #include "PhreeqcIO.h"
 #include "PhreeqcIOData/AqueousSolution.h"
 #include "PhreeqcIOData/CreateAqueousSolution.h"
 #include "PhreeqcIOData/CreateEquilibriumPhase.h"
 #include "PhreeqcIOData/CreateKineticReactant.h"
-#include "PhreeqcIOData/CreateKnobs.h"
 #include "PhreeqcIOData/CreateOutput.h"
 #include "PhreeqcIOData/CreateSurface.h"
 #include "PhreeqcIOData/CreateUserPunch.h"
 #include "PhreeqcIOData/Dump.h"
 #include "PhreeqcIOData/EquilibriumPhase.h"
 #include "PhreeqcIOData/KineticReactant.h"
-#include "PhreeqcIOData/Knobs.h"
 #include "PhreeqcIOData/ReactionRate.h"
 #include "PhreeqcIOData/Surface.h"
 #include "PhreeqcIOData/UserPunch.h"
@@ -109,7 +109,7 @@ createChemicalSolverInterface<ChemicalSolver::Phreeqc>(
                     : std::make_unique<PhreeqcIOData::Dump>(project_file_name);
 
     // knobs
-    auto knobs = PhreeqcIOData::createKnobs(
+    auto knobs = createKnobs(
         //! \ogs_file_param{prj__chemical_system__knobs}
         config.getConfigSubtree("knobs"));
 
@@ -175,10 +175,15 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
                 //! \ogs_file_param{prj__chemical_system__surface}
                 config.getConfigSubtreeOptional("surface"));
 
+    // knobs
+    auto knobs = createKnobs(
+        //! \ogs_file_param{prj__chemical_system__knobs}
+        config.getConfigSubtree("knobs"));
+
     return std::make_unique<PhreeqcKernelData::PhreeqcKernel>(
         mesh.getNumberOfBaseNodes(), process_id_to_component_name_map,
         std::move(path_to_database), std::move(aqueous_solution),
         std::move(equilibrium_phases), std::move(kinetic_reactants),
-        std::move(reaction_rates), std::move(surface));
+        std::move(reaction_rates), std::move(surface), knobs);
 }
 }  // namespace ChemistryLib

@@ -9,12 +9,10 @@
  */
 
 #include "CreateKnobs.h"
-#include "BaseLib/ConfigTree.h"
 #include "Knobs.h"
+#include "BaseLib/ConfigTree.h"
 
 namespace ChemistryLib
-{
-namespace PhreeqcIOData
 {
 Knobs createKnobs(BaseLib::ConfigTree const& config)
 {
@@ -41,5 +39,4 @@ Knobs createKnobs(BaseLib::ConfigTree const& config)
     return {max_iterations, relative_convergence_tolerance, tolerance,
             step_size, scaling};
 }
-}  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

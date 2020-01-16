@@ -13,8 +13,6 @@
 
 namespace ChemistryLib
 {
-namespace PhreeqcIOData
-{
 struct Knobs
 {
     friend std::ostream& operator<<(std::ostream& os, Knobs const& knobs);
@@ -25,5 +23,4 @@ struct Knobs
     int const step_size;
     bool const scaling;
 };
-}  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

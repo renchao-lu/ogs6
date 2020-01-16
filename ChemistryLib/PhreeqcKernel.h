@@ -25,6 +25,8 @@ class cxxISolution;
 
 namespace ChemistryLib
 {
+struct Knobs;
+
 namespace PhreeqcKernelData
 {
 class AqueousSolution;
@@ -41,7 +43,8 @@ public:
                   std::unique_ptr<Equilibriums>&& equilibrium_phases,
                   std::unique_ptr<Kinetics>&& kinetic_reactants,
                   std::vector<ReactionRate>&& reaction_rates,
-                  std::unique_ptr<Surface>&& surface);
+                  std::unique_ptr<Surface>&& surface,
+                  ChemistryLib::Knobs knobs);
 
     void executeInitialCalculation(
         std::vector<GlobalVector*>& process_solutions) override;
@@ -90,19 +93,7 @@ private:
         return elt_list_NameDouble();
     }
 
-    void setConvergenceTolerance()
-    {
-        convergence_tolerance = 1e-12;
-
-        // knobs
-        {
-            itmax = 250;
-            convergence_tolerance = 1e-6;
-            ineq_tol = 1e-20;
-            step_size = 5;
-            diagonal_scale = 1;
-        }
-    }
+    void configureNumericalSettings(Knobs const& knobs);
 
     void configureOutputSettings() { pr.all = false; }
 
