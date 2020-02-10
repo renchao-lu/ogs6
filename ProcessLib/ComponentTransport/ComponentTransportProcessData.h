@@ -12,6 +12,7 @@
 
 #include <memory>
 
+#include "LookupTable.h"
 #include "MaterialLib/MPL/CreateMaterialSpatialDistributionMap.h"
 #include "MathLib/LinAlg/Eigen/EigenMapTools.h"
 
@@ -30,11 +31,13 @@ struct ComponentTransportProcessData
         std::unique_ptr<MaterialPropertyLib::MaterialSpatialDistributionMap>&&
             media_map_,
         Eigen::VectorXd const& specific_body_force_, bool const has_gravity_,
-        bool const non_advective_form_)
+        bool const non_advective_form_,
+        std::unique_ptr<LookupTable> lookup_table_)
         : media_map(std::move(media_map_)),
           specific_body_force(specific_body_force_),
           has_gravity(has_gravity_),
-          non_advective_form(non_advective_form_)
+          non_advective_form(non_advective_form_),
+          lookup_table(std::move(lookup_table_))
     {
     }
 
@@ -43,6 +46,7 @@ struct ComponentTransportProcessData
     Eigen::VectorXd const specific_body_force;
     bool const has_gravity;
     bool const non_advective_form;
+    std::unique_ptr<LookupTable> lookup_table;
 };
 
 }  // namespace ComponentTransport
