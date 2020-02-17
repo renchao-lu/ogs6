@@ -219,6 +219,15 @@ void ComponentTransportProcess::postTimestepConcreteProcess(
         DBUG(
             "This is the transport part of the staggered "
             "ComponentTransportProcess.");
+
+        if (_process_data.lookup_table && process_id == 1)
+        {
+            // update process solutions via look-up table
+            DBUG("Update process solutions via look-up table");
+            _process_data.lookup_table->lookup(x, _xs_previous_timestep,
+                                               _process_id_to_component_name_map);
+        }
+
         return;
     }
     if (!_surfaceflux)  // computing the surfaceflux is optional

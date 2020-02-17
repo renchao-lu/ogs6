@@ -14,6 +14,7 @@
 #include <map>
 
 #include "BaseLib/Error.h"
+#include "BaseLib/Algorithm.h"
 #include "CreateLookupTable.h"
 #include "LookupTable.h"
 
@@ -34,53 +35,56 @@ std::unique_ptr<LookupTable> createLookupTable(
                   (*lookup_table_file).c_str());
     }
 
-    int num_skipped_lines = 5;
-    for (int i = 0; i < num_skipped_lines; ++i)
-    {
-        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
+//    int num_skipped_lines = 5;
+//    for (int i = 0; i < num_skipped_lines; ++i)
+//    {
+//        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//    }
 
     // input parameters
     std::string line;
-    std::getline(in, line);
-    std::vector<std::string> params;
-    boost::split(params, line, boost::is_any_of("\t "));
-    assert(params.size() == 5);
+//    std::getline(in, line);
+//    std::vector<std::string> params;
+//    boost::split(params, line, boost::is_any_of(" "));
+//    assert(params.size() == 5);
 
-    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    std::getline(in, line);
-    std::istringstream iss(line);
-    double value, step_size;
-    int num_steps;
-    std::size_t num_tuples = 1;
-    std::vector<std::vector<double>> values;
-    while (iss >> value >> step_size >> num_steps)
-    {
-        std::vector<double> values_(num_steps);
-        value -= step_size;
-        std::generate(values_.begin(), values_.end(), [&step_size, &value] {
-            return value += step_size;
-        });
-        values.push_back(values_);
-        num_tuples *= num_steps;
-    }
+//    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//    std::getline(in, line);
+//    std::istringstream iss(line);
+//    double value, step_size;
+//    int num_steps;
+//    std::size_t num_tuples = 1;
+//    std::vector<std::vector<double>> values;
+//    while (iss >> value >> step_size >> num_steps)
+//    {
+//        std::vector<double> values_(num_steps);
+//        value -= step_size;
+//        std::generate(values_.begin(), values_.end(), [&step_size, &value] {
+//            return value += step_size;
+//        });
+//        values.push_back(values_);
+//        num_tuples *= num_steps;
+//    }
 
-    std::map<std::string, std::vector<double>> input_parameters;
-    for (int i = 0; i < static_cast<int>(params.size()); ++i)
-    {
-        auto const& key = params[i];
-        input_parameters[key] = values[i];
-    }
+//    std::map<std::string, std::vector<double>> input_parameters;
+//    for (int i = 0; i < static_cast<int>(params.size()); ++i)
+//    {
+//        auto const& key = params[i];
+//        input_parameters[key] = values[i];
+//    }
 
     // radionuclides
     std::getline(in, line);
     std::vector<std::string> radionuclides;
     boost::split(radionuclides, line, boost::is_any_of("\t "));
-    assert(radionuclides.size() == 8);
+    assert(radionuclides.size() == 4);
 
     // skip scaling factors by far
-    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
+    std::size_t num_tuples;
+    in >> num_tuples;
+    in.ignore();
     // read matrix
     std::map<std::string, std::vector<double>> kd_matrix;
     for (std::size_t tuple_id = 0; tuple_id < num_tuples; ++tuple_id)
@@ -107,7 +111,11 @@ std::unique_ptr<LookupTable> createLookupTable(
 
     in.close();
 
-    return std::make_unique<LookupTable>(input_parameters, kd_matrix);
+    auto uranium = kd_matrix["U(6)_cur"];
+    BaseLib::makeVectorUnique(uranium);
+
+    return std::make_unique<LookupTable>(std::move(uranium),
+                                         std::move(kd_matrix));
 }
 
 }  // namespace ComponentTransport
