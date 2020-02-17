@@ -131,10 +131,10 @@ std::unique_ptr<LookupTable> createLookupTable(
     in.close();
 
     std::map<std::string, std::vector<double>> variables;
-    variables.emplace("Ni_cur", kd_matrix["Ni_cur"]);
-    variables.emplace("Np(5)_cur", kd_matrix["Np(5)_cur"]);
-    variables.emplace("Th_cur", kd_matrix["Th_cur"]);
-    variables.emplace("Ra_cur", kd_matrix["Ra_cur"]);
+    variables.emplace("Ni", kd_matrix["Ni"]);
+    variables.emplace("Np(5)", kd_matrix["Np(5)"]);
+    variables.emplace("Th", kd_matrix["Th"]);
+    variables.emplace("Ra", kd_matrix["Ra"]);
     variables.emplace("Ni_prev", kd_matrix["Ni_prev"]);
     variables.emplace("Np(5)_prev", kd_matrix["Np(5)_prev"]);
     variables.emplace("Th_prev", kd_matrix["Th_prev"]);

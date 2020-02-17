@@ -72,41 +72,64 @@ struct LookupTable
                 std::vector<std::unique_ptr<GlobalVector>> const& _x_previous_timestep,
                 std::vector<std::pair<int, std::string>> const& process_id_to_component_name_map)
     {
-        auto const process_id = 2;
-        auto const n_nodes = x[process_id]->size();
+        std::vector<int> process_ids;
+        for (auto it = radionuclides_concentrations.begin(); it != radionuclides_concentrations.end(); it++)
+        {
+            auto lamda = [&it](auto const& p){
+                return p.second == it->first;
+            };
+
+            auto pair = std::find_if(process_id_to_component_name_map.begin(),
+                         process_id_to_component_name_map.end(),
+                         lamda);
+            if (pair != process_id_to_component_name_map.end())
+            {
+                process_ids.push_back(pair->first);
+            }
+        }
+
+        auto const n_nodes = x[0]->size();
         for (auto node_id = 0; node_id < n_nodes; ++node_id)
         {
-            auto node_value = x[process_id]->get(node_id);
-            auto node_value_previous_timestep =
-                    _x_previous_timestep[process_id]->get(node_id);
-            auto const neighboring_values = getNeighboringValues(uranium, node_value);
-            auto const neighboring_values_previous_timestep =
-                    getNeighboringValues(uranium, node_value_previous_timestep);
+            std::vector<double> node_values;
+            std::vector<double> node_values_previous_timestep;
+            for (auto const& process_id : process_ids)
+            {
+                node_values.push_back(x[process_id]->get(node_id));
+                node_values_previous_timestep.push_back(
+                            _x_previous_timestep[process_id]->get(node_id));
+            }
 
-            // look up the table
-            auto const base_point_index = getIntersectedIndex(uranium_cur[neighboring_values.first],
-                    uranium_prev[neighboring_values_previous_timestep.first]);
-            auto& base_value = kd_matrix.at("U(6)")[base_point_index];
+            int i = 1;
 
-            // linear approximation
-            auto const point_1_index = getIntersectedIndex(uranium_cur[neighboring_values.second],
-                    uranium_prev[neighboring_values_previous_timestep.first]);
-            auto& point_1_value = kd_matrix.at("U(6)")[point_1_index];
-            auto df_x = (point_1_value - base_value) / (neighboring_values.second
-                                                        - neighboring_values.first);
+//            auto const neighboring_values = getNeighboringValues(uranium, node_value);
+//            auto const neighboring_values_previous_timestep =
+//                    getNeighboringValues(uranium, node_value_previous_timestep);
 
-            auto const point_2_index = getIntersectedIndex(uranium_cur[neighboring_values.first],
-                    uranium_prev[neighboring_values_previous_timestep.second]);
-            auto& point_2_value = kd_matrix.at("U(6)")[point_2_index];
-            auto df_y = (point_2_value - base_value) /
-                    (neighboring_values_previous_timestep.second
-                                  - neighboring_values_previous_timestep.first);
+//            // look up the table
+//            auto const base_point_index = getIntersectedIndex(uranium_cur[neighboring_values.first],
+//                    uranium_prev[neighboring_values_previous_timestep.first]);
+//            auto& base_value = kd_matrix.at("U(6)")[base_point_index];
 
-            auto new_value = base_value + df_x * (node_value - neighboring_values.first)
-                    + df_y * (node_value_previous_timestep
-                              - neighboring_values_previous_timestep.first);
+//            // linear approximation
+//            auto const point_1_index = getIntersectedIndex(uranium_cur[neighboring_values.second],
+//                    uranium_prev[neighboring_values_previous_timestep.first]);
+//            auto& point_1_value = kd_matrix.at("U(6)")[point_1_index];
+//            auto df_x = (point_1_value - base_value) / (neighboring_values.second
+//                                                        - neighboring_values.first);
 
-            x[process_id]->set(node_id, new_value);
+//            auto const point_2_index = getIntersectedIndex(uranium_cur[neighboring_values.first],
+//                    uranium_prev[neighboring_values_previous_timestep.second]);
+//            auto& point_2_value = kd_matrix.at("U(6)")[point_2_index];
+//            auto df_y = (point_2_value - base_value) /
+//                    (neighboring_values_previous_timestep.second
+//                                  - neighboring_values_previous_timestep.first);
+
+//            auto new_value = base_value + df_x * (node_value - neighboring_values.first)
+//                    + df_y * (node_value_previous_timestep
+//                              - neighboring_values_previous_timestep.first);
+
+//            x[process_id]->set(node_id, new_value);
         }
     }
 
