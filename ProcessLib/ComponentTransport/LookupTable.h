@@ -58,34 +58,14 @@ namespace ComponentTransport
 {
 struct LookupTable
 {
-    LookupTable(std::vector<double>&& uranium_,
-            std::map<std::string, std::vector<double>>&& kd_matrix_)
-        : uranium(std::move(uranium_)), kd_matrix(std::move(kd_matrix_))
+    LookupTable(
+        std::map<std::string, std::map<double, std::vector<std::size_t>>>&&
+            radionuclides_concentrations_,
+        std::map<std::string, std::vector<double>>&& kd_matrix_)
+        : radionuclides_concentrations(
+              std::move(radionuclides_concentrations_)),
+          kd_matrix(std::move(kd_matrix_))
     {
-        std::size_t const size = 31;
-        for (int i = 0; i < uranium.size(); ++i)
-        {
-            std::vector<std::size_t> matrix_index;
-            matrix_index.reserve(size);
-            for (int j =0; j < size; ++j)
-            {
-                matrix_index.push_back(j + i*size);
-            }
-
-            uranium_cur[uranium[i]] = matrix_index;
-        }
-
-        for (int i = 0; i < uranium.size(); ++i)
-        {
-            std::vector<std::size_t> matrix_index;
-            matrix_index.reserve(size);
-            for (int j = 0; j < size; ++j)
-            {
-                matrix_index.push_back(j*size + i);
-            }
-
-            uranium_prev[uranium[i]] = matrix_index;
-        }
     }
 
     void lookup(std::vector<GlobalVector*> const& x,
@@ -131,9 +111,8 @@ struct LookupTable
     }
 
     std::map<std::string, std::vector<double>> const kd_matrix;
-    std::map<double, std::vector<std::size_t>> uranium_cur;
-    std::map<double, std::vector<std::size_t>> uranium_prev;
-    std::vector<double> uranium;
+    std::map<std::string, std::map<double, std::vector<std::size_t>>>
+        radionuclides_concentrations;
 };
 }  // namespace ComponentTransport
 }  // namespace ProcessLib

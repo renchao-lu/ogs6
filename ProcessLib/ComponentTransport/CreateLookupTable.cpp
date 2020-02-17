@@ -18,6 +18,25 @@
 #include "CreateLookupTable.h"
 #include "LookupTable.h"
 
+namespace
+{
+std::vector<std::size_t> searchList(std::vector<double> const& v,
+                                    double const& find_for)
+{
+    std::vector<std::size_t> indexes;
+    for (auto i = 0; i < v.size(); i++)
+    {
+        if (v[i] == find_for)
+        {
+            indexes.push_back(i);
+        }
+    }
+
+    return indexes;
+}
+
+}  // namespace
+
 namespace ProcessLib
 {
 namespace ComponentTransport
@@ -77,7 +96,7 @@ std::unique_ptr<LookupTable> createLookupTable(
     std::getline(in, line);
     std::vector<std::string> radionuclides;
     boost::split(radionuclides, line, boost::is_any_of("\t "));
-    assert(radionuclides.size() == 4);
+    assert(radionuclides.size() == 12);
 
     // skip scaling factors by far
 //    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -111,11 +130,35 @@ std::unique_ptr<LookupTable> createLookupTable(
 
     in.close();
 
-    auto uranium = kd_matrix["U(6)_cur"];
-    BaseLib::makeVectorUnique(uranium);
+    std::map<std::string, std::vector<double>> variables;
+    variables.emplace("Ni_cur", kd_matrix["Ni_cur"]);
+    variables.emplace("Np(5)_cur", kd_matrix["Np(5)_cur"]);
+    variables.emplace("Th_cur", kd_matrix["Th_cur"]);
+    variables.emplace("Ra_cur", kd_matrix["Ra_cur"]);
+    variables.emplace("Ni_prev", kd_matrix["Ni_prev"]);
+    variables.emplace("Np(5)_prev", kd_matrix["Np(5)_prev"]);
+    variables.emplace("Th_prev", kd_matrix["Th_prev"]);
+    variables.emplace("Ra_prev", kd_matrix["Ra_prev"]);
 
-    return std::make_unique<LookupTable>(std::move(uranium),
-                                         std::move(kd_matrix));
+    std::map<std::string, std::map<double, std::vector<std::size_t>>>
+        radionuclides_concentrations;
+    for (auto it = variables.begin(); it != variables.end(); it++)
+    {
+        BaseLib::makeVectorUnique(it->second);
+
+        std::map<double, std::vector<std::size_t>> radionuclide_concentration;
+        for (auto const& value : it->second)
+        {
+            auto matrix_index = searchList(kd_matrix[it->first], value);
+
+            radionuclide_concentration[value] = matrix_index;
+        }
+
+        radionuclides_concentrations[it->first] = radionuclide_concentration;
+    }
+
+    return std::make_unique<LookupTable>(
+        std::move(radionuclides_concentrations), std::move(kd_matrix));
 }
 
 }  // namespace ComponentTransport
