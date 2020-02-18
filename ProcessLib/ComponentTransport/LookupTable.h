@@ -18,7 +18,7 @@
 
 namespace
 {
-std::pair<double, double> getNeighboringValues(
+std::vector<std::pair<double, double>> getNeighboringValues(
         std::vector<double> const& vec, double value)
 {
     auto const it = std::lower_bound(vec.begin(), vec.end(), value);
@@ -116,31 +116,20 @@ struct LookupTable
         auto const n_nodes = x[0]->size();
         for (auto node_id = 0; node_id < n_nodes; ++node_id)
         {
-            std::vector<double> node_values;
-            std::vector<double> node_values_previous_timestep;
-            std::vector<std::pair<double, double>> neighboring_values;
-            std::vector<std::pair<double, double>>
-                neighboring_values_previous_timestep;
-            for (auto const& pair : concentration_field_to_process_id)
-            {
-                auto const node_value = x[pair.second]->get(node_id);
-                // how to deal with negative concentration
-                auto const neighboring_value = getNeighboringValues(
-                    concentration_seeds[pair.first], node_value);
-                node_values.push_back(node_value);
-                neighboring_values.push_back(neighboring_value);
-
-                auto const node_value_previous_timestep =
-                    _x_previous_timestep[pair.second]->get(node_id);
-                auto const neighboring_value_previous_timestep =
-                    getNeighboringValues(
-                        surface_field_seeds[pair.first + "_prev"],
-                        node_value_previous_timestep);
-                node_values_previous_timestep.push_back(
-                    node_value_previous_timestep);
-                neighboring_values_previous_timestep.push_back(
-                    neighboring_value_previous_timestep);
+            std::vector<double> nodal_xs;
+            for (auto const& pair : concentration_field_to_process_id) {
+                nodal_xs.emplace_back(x[pair.second]->get(node_id));
             }
+            for (auto const& pair : concentration_field_to_process_id) {
+                nodal_xs.emplace_back(_x_previous_timestep[pair.second]->get(node_id));
+            }
+
+            // how to deal with negative concentration
+            auto neighboring_integration_points = getNeighboringValues(
+                        concentration_seeds[pair.first], node_value);
+            neighboring_integration_points.push_back(
+                        getNeighboringValues(surface_field_seeds[pair.first + "_prev"],
+                        node_value_previous_timestep));
 
             // look up the table
             std::vector<double> values;
