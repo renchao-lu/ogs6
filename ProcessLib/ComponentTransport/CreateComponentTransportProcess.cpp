@@ -138,7 +138,8 @@ std::unique_ptr<Process> createComponentTransportProcess(
         MaterialPropertyLib::createMaterialSpatialDistributionMap(media, mesh);
 
     auto lookup_table = createLookupTable(
-        config.getConfigParameterOptional<std::string>("lookup_table"));
+        config.getConfigParameterOptional<std::string>("lookup_table"),
+        process_id_to_component_name_map);
 
     ComponentTransportProcessData process_data{
         std::move(media_map), specific_body_force, has_gravity,

@@ -42,7 +42,9 @@ namespace ProcessLib
 namespace ComponentTransport
 {
 std::unique_ptr<LookupTable> createLookupTable(
-    boost::optional<std::string> lookup_table_file)
+    boost::optional<std::string> lookup_table_file,
+    std::vector<std::pair<int, std::string>> const&
+        process_id_to_component_name_map)
 {
     if (!lookup_table_file)
         return nullptr;
@@ -94,31 +96,48 @@ std::unique_ptr<LookupTable> createLookupTable(
 
     // radionuclides
     std::getline(in, line);
-    std::vector<std::string> radionuclides;
-    boost::split(radionuclides, line, boost::is_any_of("\t "));
-    assert(radionuclides.size() == 12);
+    std::vector<std::string> fields;
+    boost::split(fields, line, boost::is_any_of("\t "));
+    assert(fields.size() == 12);
+
+    std::vector<std::string> concentration_fields;
+    std::vector<std::string> surface_fields;
+    std::vector<std::string> result_fields;
+    for (auto const& field : fields)
+    {
+        if (field.find("_prev") != std::string::npos)
+        {
+            surface_fields.push_back(field);
+        }
+        else if (field.find("_new") != std::string::npos)
+        {
+            result_fields.push_back(field);
+        }
+        else
+        {
+            concentration_fields.push_back(field);
+        }
+    }
 
     // skip scaling factors by far
 //    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    std::size_t num_tuples;
-    in >> num_tuples;
+    std::size_t num_items;
+    in >> num_items;
     in.ignore();
     // read matrix
-    std::map<std::string, std::vector<double>> kd_matrix;
-    for (std::size_t tuple_id = 0; tuple_id < num_tuples; ++tuple_id)
+    std::map<std::string, std::vector<double>> table;
+    for (auto item_id = 0; item_id < num_items; ++item_id)
     {
         std::getline(in, line);
-        std::vector<std::string> items;
+        std::vector<std::string> cells;
         boost::trim_if(line, boost::is_any_of("\t "));
-        boost::algorithm::split(items, line, boost::is_any_of("\t "),
+        boost::algorithm::split(cells, line, boost::is_any_of("\t "),
                                 boost::token_compress_on);
 
-        for (int item_id = 0; item_id < static_cast<int>(items.size());
-             ++item_id)
+        for (auto cell_id = 0; cell_id < cells.size(); ++cell_id)
         {
-            kd_matrix[radionuclides[item_id]].push_back(
-                std::stod(items[item_id]));
+            table[fields[cell_id]].push_back(std::stod(cells[cell_id]));
         }
     }
 
@@ -131,14 +150,44 @@ std::unique_ptr<LookupTable> createLookupTable(
     in.close();
 
     std::map<std::string, std::vector<double>> variables;
-    variables.emplace("Ni", kd_matrix["Ni"]);
-    variables.emplace("Np(5)", kd_matrix["Np(5)"]);
-    variables.emplace("Th", kd_matrix["Th"]);
-    variables.emplace("Ra", kd_matrix["Ra"]);
-    variables.emplace("Ni_prev", kd_matrix["Ni_prev"]);
-    variables.emplace("Np(5)_prev", kd_matrix["Np(5)_prev"]);
-    variables.emplace("Th_prev", kd_matrix["Th_prev"]);
-    variables.emplace("Ra_prev", kd_matrix["Ra_prev"]);
+    for (auto const& concentration_field : concentration_fields)
+    {
+        variables.emplace(concentration_field, table[concentration_field]);
+    }
+    for (auto const& surface_field : surface_fields)
+    {
+        variables.emplace(surface_field, table[surface_field]);
+    }
+
+    std::map<std::string, int> concentration_field_to_process_id;
+    for (auto const& concentration_field : concentration_fields)
+    {
+        auto pair = std::find_if(process_id_to_component_name_map.begin(),
+                                 process_id_to_component_name_map.end(),
+                                 [&concentration_field](auto const& p) {
+                                     return p.second == concentration_field;
+                                 });
+
+        if (pair != process_id_to_component_name_map.end())
+        {
+            concentration_field_to_process_id[concentration_field] =
+                pair->first;
+        }
+    }
+
+    std::map<std::string, std::vector<double>> concentration_seeds;
+    for (auto const& concentration_field : concentration_fields)
+    {
+        concentration_seeds[concentration_field] = table[concentration_field];
+        BaseLib::makeVectorUnique(concentration_seeds[concentration_field]);
+    }
+
+    std::map<std::string, std::vector<double>> surface_field_seeds;
+    for (auto const& surface_field : surface_fields)
+    {
+        surface_field_seeds[surface_field] = table[surface_field];
+        BaseLib::makeVectorUnique(surface_field_seeds[surface_field]);
+    }
 
     std::map<std::string, std::map<double, std::vector<std::size_t>>>
         radionuclides_concentrations;
@@ -149,7 +198,7 @@ std::unique_ptr<LookupTable> createLookupTable(
         std::map<double, std::vector<std::size_t>> radionuclide_concentration;
         for (auto const& value : it->second)
         {
-            auto matrix_index = searchList(kd_matrix[it->first], value);
+            auto matrix_index = searchList(table[it->first], value);
 
             radionuclide_concentration[value] = matrix_index;
         }
@@ -158,7 +207,9 @@ std::unique_ptr<LookupTable> createLookupTable(
     }
 
     return std::make_unique<LookupTable>(
-        std::move(radionuclides_concentrations), std::move(kd_matrix));
+        std::move(concentration_field_to_process_id),
+        std::move(concentration_seeds), std::move(surface_field_seeds),
+        std::move(radionuclides_concentrations), std::move(table));
 }
 
 }  // namespace ComponentTransport

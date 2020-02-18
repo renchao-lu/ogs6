@@ -22,7 +22,9 @@ namespace ComponentTransport
 struct LookupTable;
 
 std::unique_ptr<LookupTable> createLookupTable(
-    boost::optional<std::string> lookup_table_file);
+    boost::optional<std::string> lookup_table_file,
+    std::vector<std::pair<int, std::string>> const&
+        process_id_to_component_name_map);
 
 }  // namespace ComponentTransport
 }  // namespace ProcessLib

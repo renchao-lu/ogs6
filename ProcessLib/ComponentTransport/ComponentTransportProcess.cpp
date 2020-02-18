@@ -224,8 +224,7 @@ void ComponentTransportProcess::postTimestepConcreteProcess(
         {
             // update process solutions via look-up table
             DBUG("Update process solutions via look-up table");
-            _process_data.lookup_table->lookup(x, _xs_previous_timestep,
-                                               _process_id_to_component_name_map);
+            _process_data.lookup_table->lookup(x, _xs_previous_timestep);
         }
 
         return;
