@@ -13,99 +13,59 @@
 #include <map>
 #include <vector>
 
-#include "MathLib/LinAlg/GlobalMatrixVectorTypes.h"
+#include "BaseLib/Algorithm.h"
 #include "BaseLib/Error.h"
-
-namespace
-{
-std::vector<std::pair<double, double>> getNeighboringValues(
-        std::vector<double> const& vec, double value)
-{
-    auto const it = std::lower_bound(vec.begin(), vec.end(), value);
-
-    if (it == vec.begin())
-    {
-        return std::make_pair(*it, *(it+1));
-    }
-    else if (it == vec.end())
-    {
-        return std::make_pair(*(vec.rbegin() + 1), *vec.rbegin());
-    }
-    else
-    {
-        return std::make_pair(*(it-1), *it);
-    }
-}
-
-std::size_t getIntersectedIndex(
-    std::map<std::string, std::map<double, std::vector<std::size_t>>>& map,
-    std::map<std::string, int> const& concentration_field_to_process_id,
-    std::vector<double>
-        values,
-    std::vector<double>
-        values_previous_timestep)
-{
-    std::vector<std::size_t> vec1;
-    auto map_values = map[concentration_field_to_process_id.begin()->first];
-    std::vector<std::size_t> vec = map_values[values[0]];
-    std::vector<std::size_t> temp_vec;
-
-    int i = 0;
-    for (auto const& pair : concentration_field_to_process_id)
-    {
-        map_values = map[pair.first];
-        vec1 = map_values[values[i]];
-
-        // intersect vectors
-        std::set_intersection(vec1.begin(), vec1.end(), vec.begin(), vec.end(),
-                              std::back_inserter(temp_vec));
-
-        std::swap(vec, temp_vec);
-
-        temp_vec.clear();
-        ++i;
-    }
-
-    i = 0;
-    for (auto const& pair : concentration_field_to_process_id)
-    {
-        map_values = map[pair.first + "_prev"];
-        vec1 = map_values[values_previous_timestep[i]];
-
-        // intersect vectors
-        std::set_intersection(vec1.begin(), vec1.end(), vec.begin(), vec.end(),
-                              std::back_inserter(temp_vec));
-
-        std::swap(vec, temp_vec);
-
-        temp_vec.clear();
-        ++i;
-    }
-
-    return vec[0];
-}
-}  // namespace
+#include "MathLib/LinAlg/GlobalMatrixVectorTypes.h"
 
 namespace ProcessLib
 {
 namespace ComponentTransport
 {
+struct Field
+{
+    Field(std::string field_, std::vector<double> interpolation_points_,
+          std::vector<std::vector<std::size_t>> indices_)
+        : field(field_),
+          interpolation_points(interpolation_points_),
+          indices(indices_)
+    {
+    }
+
+    std::pair<double, double> getNeighboringInterpolationPoints(double value)
+    {
+        auto const it = std::lower_bound(interpolation_points.begin(),
+                                         interpolation_points.end(), value);
+
+        if (it == interpolation_points.begin())
+        {
+            return std::make_pair(*it, *(it + 1));
+        }
+        else if (it == interpolation_points.end())
+        {
+            return std::make_pair(*(interpolation_points.rbegin() + 1),
+                                  *interpolation_points.rbegin());
+        }
+        else
+        {
+            return std::make_pair(*(it - 1), *it);
+        }
+    }
+
+    std::string field;
+    std::vector<double> interpolation_points;
+    std::vector<std::vector<std::size_t>> indices;
+};
+
 struct LookupTable
 {
-    LookupTable(
-        std::map<std::string, int>&& concentration_field_to_process_id_,
-        std::map<std::string, std::vector<double>>&& concentration_seeds_,
-        std::map<std::string, std::vector<double>>&& surface_field_seeds_,
-        std::map<std::string, std::map<double, std::vector<std::size_t>>>&&
-            radionuclides_concentrations_,
-        std::map<std::string, std::vector<double>>&& kd_matrix_)
+    LookupTable(std::vector<std::pair<std::string, int>>&&
+                    concentration_field_to_process_id_,
+                std::vector<Field>&& fields_,
+                std::map<std::string, std::vector<double>>&& table_)
         : concentration_field_to_process_id(
               std::move(concentration_field_to_process_id_)),
-          concentration_seeds(std::move(concentration_seeds_)),
-          surface_field_seeds(std::move(surface_field_seeds_)),
-          radionuclides_concentrations(
-              std::move(radionuclides_concentrations_)),
-          kd_matrix(std::move(kd_matrix_))
+          fields(std::move(fields_)),
+          table(std::move(table_))
     {
     }
 
@@ -116,85 +76,61 @@ struct LookupTable
         auto const n_nodes = x[0]->size();
         for (auto node_id = 0; node_id < n_nodes; ++node_id)
         {
-            std::vector<double> nodal_xs;
+            std::vector<double> nodal_x;
             for (auto const& pair : concentration_field_to_process_id) {
-                nodal_xs.emplace_back(x[pair.second]->get(node_id));
+                nodal_x.emplace_back(x[pair.second]->get(node_id));
             }
             for (auto const& pair : concentration_field_to_process_id) {
-                nodal_xs.emplace_back(_x_previous_timestep[pair.second]->get(node_id));
+                nodal_x.emplace_back(
+                    _x_previous_timestep[pair.second]->get(node_id));
             }
 
             // how to deal with negative concentration
-            auto neighboring_integration_points = getNeighboringValues(
-                        concentration_seeds[pair.first], node_value);
-            neighboring_integration_points.push_back(
-                        getNeighboringValues(surface_field_seeds[pair.first + "_prev"],
-                        node_value_previous_timestep));
+            std::vector<std::pair<double, double>>
+                neighboring_interpolation_points;
+            for (auto i = 0; i < nodal_x.size(); ++i)
+            {
+                auto ip =
+                    fields[i].getNeighboringInterpolationPoints(nodal_x[i]);
+                neighboring_interpolation_points.push_back(ip);
+            }
 
             // look up the table
-            std::vector<double> values;
-            std::vector<double> values_previous_timestep;
-
-            for (auto const& neighboring_value : neighboring_values)
+            std::vector<double> reference_points;
+            for (auto const& neighboring_interpolation_point :
+                 neighboring_interpolation_points)
             {
-                values.push_back(neighboring_value.first);
-            }
-            for (auto const& neighboring_value_previous_timestep :
-                 neighboring_values_previous_timestep)
-            {
-                values_previous_timestep.push_back(
-                    neighboring_value_previous_timestep.first);
+                reference_points.push_back(
+                    neighboring_interpolation_point.first);
             }
 
-            auto const base_point_index = getIntersectedIndex(
-                radionuclides_concentrations, concentration_field_to_process_id,
-                values, values_previous_timestep);
+            auto const base_point_index =
+                getIntersectedIndex(fields, reference_points);
 
             for (auto const& pair : concentration_field_to_process_id)
             {
                 auto base_value =
-                    kd_matrix.at(pair.first + "_new")[base_point_index];
+                    table.at(pair.first + "_new")[base_point_index];
                 auto new_value = base_value;
 
                 // linear approximation
-                // loop over values
-                for (auto i = 0; i < values.size(); ++i)
+                for (auto i = 0; i < fields.size(); ++i)
                 {
-                    values[i] = neighboring_values[i].second;
+                    reference_points[i] =
+                        neighboring_interpolation_points[i].second;
                     auto const interpolation_point_index =
-                        getIntersectedIndex(radionuclides_concentrations,
-                                            concentration_field_to_process_id,
-                                            values, values_previous_timestep);
-                    auto& interpolation_point_value = kd_matrix.at(
+                        getIntersectedIndex(fields, reference_points);
+                    auto& interpolation_point_value = table.at(
                         pair.first + "_new")[interpolation_point_index];
-                    auto df = (interpolation_point_value - base_value) /
-                              (neighboring_values[i].second -
-                               neighboring_values[i].first);
+                    auto slope = (interpolation_point_value - base_value) /
+                                 (neighboring_interpolation_points[i].second -
+                                  neighboring_interpolation_points[i].first);
 
                     new_value +=
-                        df * (node_values[i] - neighboring_values[i].first);
-                    values[i] = neighboring_values[i].first;
-                }
-
-                // loop over values_previous_timestep
-                for (auto i = 0; i < values_previous_timestep.size(); ++i)
-                {
-                    values_previous_timestep[i] =
-                        neighboring_values_previous_timestep[i].second;
-                    auto const interpolation_point_index =
-                        getIntersectedIndex(radionuclides_concentrations,
-                                            concentration_field_to_process_id,
-                                            values, values_previous_timestep);
-                    auto& interpolation_point_value = kd_matrix.at(
-                        pair.first + "_new")[interpolation_point_index];
-                    auto df = (interpolation_point_value - base_value) /
-                              (neighboring_values_previous_timestep[i].second -
-                               neighboring_values_previous_timestep[i].first);
-
-                    new_value +=
-                        df * (node_values_previous_timestep[i] -
-                              neighboring_values_previous_timestep[i].first);
-                    values[i] = neighboring_values[i].first;
+                        slope * (nodal_x[i] -
+                                 neighboring_interpolation_points[i].first);
+                    reference_points[i] =
+                        neighboring_interpolation_points[i].first;
                 }
 
                 x[pair.second]->set(node_id, new_value);
@@ -202,12 +138,34 @@ struct LookupTable
         }
     }
 
-    std::map<std::string, int> concentration_field_to_process_id;
-    std::map<std::string, std::vector<double>> concentration_seeds;
-    std::map<std::string, std::vector<double>> surface_field_seeds;
-    std::map<std::string, std::map<double, std::vector<std::size_t>>>
-        radionuclides_concentrations;
-    std::map<std::string, std::vector<double>> const kd_matrix;
+    std::size_t getIntersectedIndex(
+        std::vector<Field> const& fields, std::vector<double> values)
+    {
+        std::vector<std::size_t> vec1;
+        std::vector<std::size_t> temp_vec;
+        std::vector<std::size_t> vec = fields[0].indices[BaseLib::findIndex(
+            fields[0].interpolation_points, values[0])];
+
+        auto num_variables = values.size();
+        for (auto i = 0; i < num_variables; ++i)
+        {
+            auto index =
+                BaseLib::findIndex(fields[i].interpolation_points, values[i]);
+            vec1 = fields[i].indices[index];
+            // intersect vectors
+            std::set_intersection(vec1.begin(), vec1.end(), vec.begin(),
+                                  vec.end(), std::back_inserter(temp_vec));
+
+            std::swap(vec, temp_vec);
+            temp_vec.clear();
+        }
+
+        return vec[0];
+    }
+
+    std::vector<std::pair<std::string, int>> concentration_field_to_process_id;
+    std::vector<Field> fields;
+    std::map<std::string, std::vector<double>> const table;
 };
 }  // namespace ComponentTransport
 }  // namespace ProcessLib

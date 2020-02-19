@@ -20,19 +20,28 @@
 
 namespace
 {
+std::size_t getSingleValueFromFile(std::ifstream& in)
+{
+    std::size_t v;
+    in >> v;
+    in.ignore();
+
+    return v;
+}
+
 std::vector<std::size_t> searchList(std::vector<double> const& v,
                                     double const& find_for)
 {
-    std::vector<std::size_t> indexes;
+    std::vector<std::size_t> indices;
     for (auto i = 0; i < v.size(); i++)
     {
         if (v[i] == find_for)
         {
-            indexes.push_back(i);
+            indices.push_back(i);
         }
     }
 
-    return indexes;
+    return indices;
 }
 
 }  // namespace
@@ -42,174 +51,104 @@ namespace ProcessLib
 namespace ComponentTransport
 {
 std::unique_ptr<LookupTable> createLookupTable(
-    boost::optional<std::string> lookup_table_file,
+    boost::optional<std::string> spreadsheet_file,
     std::vector<std::pair<int, std::string>> const&
         process_id_to_component_name_map)
 {
-    if (!lookup_table_file)
+    if (!spreadsheet_file)
         return nullptr;
 
-    std::ifstream in(*lookup_table_file);
+    std::ifstream in(*spreadsheet_file);
     if (!in)
     {
-        OGS_FATAL("Could not open Kd matrix file '%s'.",
-                  (*lookup_table_file).c_str());
+        OGS_FATAL("Could not open spreadsheet file '%s'.",
+                  (*spreadsheet_file).c_str());
     }
 
-//    int num_skipped_lines = 5;
-//    for (int i = 0; i < num_skipped_lines; ++i)
-//    {
-//        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-//    }
+    auto const num_fields = getSingleValueFromFile(in);
+    auto const num_items = getSingleValueFromFile(in);
 
-    // input parameters
+    // read field names
     std::string line;
-//    std::getline(in, line);
-//    std::vector<std::string> params;
-//    boost::split(params, line, boost::is_any_of(" "));
-//    assert(params.size() == 5);
-
-//    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-//    std::getline(in, line);
-//    std::istringstream iss(line);
-//    double value, step_size;
-//    int num_steps;
-//    std::size_t num_tuples = 1;
-//    std::vector<std::vector<double>> values;
-//    while (iss >> value >> step_size >> num_steps)
-//    {
-//        std::vector<double> values_(num_steps);
-//        value -= step_size;
-//        std::generate(values_.begin(), values_.end(), [&step_size, &value] {
-//            return value += step_size;
-//        });
-//        values.push_back(values_);
-//        num_tuples *= num_steps;
-//    }
-
-//    std::map<std::string, std::vector<double>> input_parameters;
-//    for (int i = 0; i < static_cast<int>(params.size()); ++i)
-//    {
-//        auto const& key = params[i];
-//        input_parameters[key] = values[i];
-//    }
-
-    // radionuclides
     std::getline(in, line);
-    std::vector<std::string> fields;
-    boost::split(fields, line, boost::is_any_of("\t "));
-    assert(fields.size() == 12);
+    std::vector<std::string> field_names;
+    boost::split(field_names, line, boost::is_any_of("\t "));
+    assert(field_names.size() == num_fields);
 
-    std::vector<std::string> concentration_fields;
-    std::vector<std::string> surface_fields;
+    std::vector<std::string> variable_fields;
     std::vector<std::string> result_fields;
-    for (auto const& field : fields)
+    for (auto const& field : field_names)
     {
-        if (field.find("_prev") != std::string::npos)
-        {
-            surface_fields.push_back(field);
-        }
-        else if (field.find("_new") != std::string::npos)
+        if (field.find("_new") != std::string::npos)
         {
             result_fields.push_back(field);
         }
         else
         {
-            concentration_fields.push_back(field);
+            variable_fields.push_back(field);
         }
     }
 
-    // skip scaling factors by far
-//    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    std::size_t num_items;
-    in >> num_items;
-    in.ignore();
-    // read matrix
+    // read table
     std::map<std::string, std::vector<double>> table;
     for (auto item_id = 0; item_id < num_items; ++item_id)
     {
         std::getline(in, line);
-        std::vector<std::string> cells;
+        std::vector<std::string> buckets;
         boost::trim_if(line, boost::is_any_of("\t "));
-        boost::algorithm::split(cells, line, boost::is_any_of("\t "),
+        boost::algorithm::split(buckets, line, boost::is_any_of("\t "),
                                 boost::token_compress_on);
 
-        for (auto cell_id = 0; cell_id < cells.size(); ++cell_id)
+        for (auto bucket_id = 0; bucket_id < buckets.size(); ++bucket_id)
         {
-            table[fields[cell_id]].push_back(std::stod(cells[cell_id]));
+            table[field_names[bucket_id]].push_back(
+                std::stod(buckets[bucket_id]));
         }
     }
 
     if (!in)
     {
-        OGS_FATAL("Error when reading Kd matrix file '%s'",
-                  (*lookup_table_file).c_str());
+        OGS_FATAL("Error in reading spreadsheet file '%s'",
+                  (*spreadsheet_file).c_str());
     }
 
     in.close();
 
-    std::map<std::string, std::vector<double>> variables;
-    for (auto const& concentration_field : concentration_fields)
-    {
-        variables.emplace(concentration_field, table[concentration_field]);
-    }
-    for (auto const& surface_field : surface_fields)
-    {
-        variables.emplace(surface_field, table[surface_field]);
-    }
-
-    std::map<std::string, int> concentration_field_to_process_id;
-    for (auto const& concentration_field : concentration_fields)
+    std::vector<std::pair<std::string, int>> concentration_field_to_process_id;
+    for (auto const& variable_field : variable_fields)
     {
         auto pair = std::find_if(process_id_to_component_name_map.begin(),
                                  process_id_to_component_name_map.end(),
-                                 [&concentration_field](auto const& p) {
-                                     return p.second == concentration_field;
+                                 [&variable_field](auto const& p) {
+                                     return p.second == variable_field;
                                  });
 
         if (pair != process_id_to_component_name_map.end())
         {
-            concentration_field_to_process_id[concentration_field] =
-                pair->first;
+            concentration_field_to_process_id.emplace_back(
+                std::make_pair(variable_field, pair->first));
         }
     }
 
-    std::map<std::string, std::vector<double>> concentration_seeds;
-    for (auto const& concentration_field : concentration_fields)
+    std::vector<Field> fields;
+    for (auto const variable_field : variable_fields)
     {
-        concentration_seeds[concentration_field] = table[concentration_field];
-        BaseLib::makeVectorUnique(concentration_seeds[concentration_field]);
-    }
+        auto interpolation_points = table[variable_field];
+        BaseLib::makeVectorUnique(interpolation_points);
 
-    std::map<std::string, std::vector<double>> surface_field_seeds;
-    for (auto const& surface_field : surface_fields)
-    {
-        surface_field_seeds[surface_field] = table[surface_field];
-        BaseLib::makeVectorUnique(surface_field_seeds[surface_field]);
-    }
-
-    std::map<std::string, std::map<double, std::vector<std::size_t>>>
-        radionuclides_concentrations;
-    for (auto it = variables.begin(); it != variables.end(); it++)
-    {
-        BaseLib::makeVectorUnique(it->second);
-
-        std::map<double, std::vector<std::size_t>> radionuclide_concentration;
-        for (auto const& value : it->second)
+        std::vector<std::vector<std::size_t>> indices_vec;
+        for (auto const& ip : interpolation_points)
         {
-            auto matrix_index = searchList(table[it->first], value);
-
-            radionuclide_concentration[value] = matrix_index;
+            auto indices = searchList(table[variable_field], ip);
+            indices_vec.push_back(indices);
         }
 
-        radionuclides_concentrations[it->first] = radionuclide_concentration;
+        fields.emplace_back(variable_field, interpolation_points, indices_vec);
     }
 
     return std::make_unique<LookupTable>(
-        std::move(concentration_field_to_process_id),
-        std::move(concentration_seeds), std::move(surface_field_seeds),
-        std::move(radionuclides_concentrations), std::move(table));
+        std::move(concentration_field_to_process_id), std::move(fields),
+        std::move(table));
 }
 
 }  // namespace ComponentTransport
