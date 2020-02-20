@@ -45,15 +45,21 @@ void LookupTable::lookup(
         std::vector<double> nodal_x;
         for (auto const& pair : concentration_field_to_process_id)
         {
-            nodal_x.emplace_back(x[pair.second]->get(node_id));
+            // check for negative concentration
+            double value = x[pair.second]->get(node_id) < 0.
+                               ? 0.
+                               : x[pair.second]->get(node_id);
+            nodal_x.push_back(value);
         }
         for (auto const& pair : concentration_field_to_process_id)
         {
-            nodal_x.emplace_back(
-                _x_previous_timestep[pair.second]->get(node_id));
+            double value =
+                _x_previous_timestep[pair.second]->get(node_id) < 0.
+                    ? 0.
+                    : _x_previous_timestep[pair.second]->get(node_id);
+            nodal_x.push_back(value);
         }
 
-        // how to deal with negative concentration
         std::vector<std::pair<double, double>> neighboring_data_points;
         for (auto i = 0; i < static_cast<int>(nodal_x.size()); ++i)
         {
