@@ -21,18 +21,16 @@ namespace ComponentTransport
 {
 struct Field
 {
-    Field(std::string field_, std::vector<double> interpolation_points_,
+    Field(std::string field_, std::vector<double> data_points_,
           std::vector<std::vector<std::size_t>> indices_)
-        : field(field_),
-          interpolation_points(interpolation_points_),
-          indices(indices_)
+        : field(field_), data_points(data_points_), indices(indices_)
     {
     }
 
-    std::pair<double, double> getNeighboringInterpolationPoints(double value);
+    std::pair<double, double> getNeighboringDataPoints(double value);
 
     std::string field;
-    std::vector<double> interpolation_points;
+    std::vector<double> data_points;
     std::vector<std::vector<std::size_t>> indices;
 };
 

@@ -15,19 +15,19 @@ namespace ProcessLib
 {
 namespace ComponentTransport
 {
-std::pair<double, double> Field::getNeighboringInterpolationPoints(double value)
+std::pair<double, double> Field::getNeighboringDataPoints(double value)
 {
-    auto const it = std::lower_bound(interpolation_points.begin(),
-                                     interpolation_points.end(), value);
+    auto const it =
+        std::lower_bound(data_points.begin(), data_points.end(), value);
 
-    if (it == interpolation_points.begin())
+    if (it == data_points.begin())
     {
         return std::make_pair(*it, *(it + 1));
     }
-    else if (it == interpolation_points.end())
+    else if (it == data_points.end())
     {
-        return std::make_pair(*(interpolation_points.rbegin() + 1),
-                              *interpolation_points.rbegin());
+        return std::make_pair(*(data_points.rbegin() + 1),
+                              *data_points.rbegin());
     }
     else
     {
@@ -54,19 +54,18 @@ void LookupTable::lookup(
         }
 
         // how to deal with negative concentration
-        std::vector<std::pair<double, double>> neighboring_interpolation_points;
-        for (auto i = 0; i < nodal_x.size(); ++i)
+        std::vector<std::pair<double, double>> neighboring_data_points;
+        for (auto i = 0; i < static_cast<int>(nodal_x.size()); ++i)
         {
-            auto ip = fields[i].getNeighboringInterpolationPoints(nodal_x[i]);
-            neighboring_interpolation_points.push_back(ip);
+            auto ip = fields[i].getNeighboringDataPoints(nodal_x[i]);
+            neighboring_data_points.push_back(ip);
         }
 
         // look up the table
         std::vector<double> reference_points;
-        for (auto const& neighboring_interpolation_point :
-             neighboring_interpolation_points)
+        for (auto const& neighboring_data_point : neighboring_data_points)
         {
-            reference_points.push_back(neighboring_interpolation_point.first);
+            reference_points.push_back(neighboring_data_point.first);
         }
 
         auto const base_point_index =
@@ -78,22 +77,20 @@ void LookupTable::lookup(
             auto new_value = base_value;
 
             // linear approximation
-            for (auto i = 0; i < fields.size(); ++i)
+            for (auto i = 0; i < static_cast<int>(fields.size()); ++i)
             {
-                reference_points[i] =
-                    neighboring_interpolation_points[i].second;
+                reference_points[i] = neighboring_data_points[i].second;
                 auto const interpolation_point_index =
                     getIntersectedIndex(fields, reference_points);
                 auto& interpolation_point_value =
                     table.at(pair.first + "_new")[interpolation_point_index];
                 auto slope = (interpolation_point_value - base_value) /
-                             (neighboring_interpolation_points[i].second -
-                              neighboring_interpolation_points[i].first);
+                             (neighboring_data_points[i].second -
+                              neighboring_data_points[i].first);
 
                 new_value +=
-                    slope *
-                    (nodal_x[i] - neighboring_interpolation_points[i].first);
-                reference_points[i] = neighboring_interpolation_points[i].first;
+                    slope * (nodal_x[i] - neighboring_data_points[i].first);
+                reference_points[i] = neighboring_data_points[i].first;
             }
 
             x[pair.second]->set(node_id, new_value);
@@ -101,19 +98,18 @@ void LookupTable::lookup(
     }
 }
 
-std::size_t LookupTable::getIntersectedIndex(
-    std::vector<Field> const& fields, std::vector<double> values)
+std::size_t LookupTable::getIntersectedIndex(std::vector<Field> const& fields,
+                                             std::vector<double> values)
 {
     std::vector<std::size_t> vec1;
     std::vector<std::size_t> temp_vec;
-    std::vector<std::size_t> vec = fields[0].indices[BaseLib::findIndex(
-        fields[0].interpolation_points, values[0])];
+    std::vector<std::size_t> vec =
+        fields[0].indices[BaseLib::findIndex(fields[0].data_points, values[0])];
 
     auto num_variables = values.size();
-    for (auto i = 0; i < num_variables; ++i)
+    for (auto i = 0; i < static_cast<int>(num_variables); ++i)
     {
-        auto index =
-            BaseLib::findIndex(fields[i].interpolation_points, values[i]);
+        auto index = BaseLib::findIndex(fields[i].data_points, values[i]);
         vec1 = fields[i].indices[index];
         // intersect vectors
         std::set_intersection(vec1.begin(), vec1.end(), vec.begin(), vec.end(),
