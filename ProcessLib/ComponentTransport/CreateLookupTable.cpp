@@ -33,7 +33,7 @@ std::vector<std::size_t> searchList(std::vector<double> const& v,
                                     double const& find_for)
 {
     std::vector<std::size_t> indices;
-    for (auto i = 0; i < v.size(); i++)
+    for (auto i = 0; i < static_cast<int>(v.size()); i++)
     {
         if (v[i] == find_for)
         {
@@ -50,7 +50,7 @@ namespace ProcessLib
 {
 namespace ComponentTransport
 {
-std::unique_ptr<LookupTable> createLookupTable(
+std::unique_ptr<Table> createTable(
     boost::optional<std::string> spreadsheet_file,
     std::vector<std::pair<int, std::string>> const&
         process_id_to_component_name_map)
@@ -91,7 +91,7 @@ std::unique_ptr<LookupTable> createLookupTable(
 
     // read table
     std::map<std::string, std::vector<double>> table;
-    for (auto item_id = 0; item_id < num_items; ++item_id)
+    for (auto item_id = 0; item_id < static_cast<int>(num_items); ++item_id)
     {
         std::getline(in, line);
         std::vector<std::string> buckets;
@@ -99,7 +99,8 @@ std::unique_ptr<LookupTable> createLookupTable(
         boost::algorithm::split(buckets, line, boost::is_any_of("\t "),
                                 boost::token_compress_on);
 
-        for (auto bucket_id = 0; bucket_id < buckets.size(); ++bucket_id)
+        for (auto bucket_id = 0; bucket_id < static_cast<int>(buckets.size());
+             ++bucket_id)
         {
             table[field_names[bucket_id]].push_back(
                 std::stod(buckets[bucket_id]));
@@ -146,9 +147,8 @@ std::unique_ptr<LookupTable> createLookupTable(
         fields.emplace_back(variable_field, interpolation_points, indices_vec);
     }
 
-    return std::make_unique<LookupTable>(
-        std::move(concentration_field_to_process_id), std::move(fields),
-        std::move(table));
+    return std::make_unique<Table>(std::move(concentration_field_to_process_id),
+                                   std::move(fields), std::move(table));
 }
 
 }  // namespace ComponentTransport

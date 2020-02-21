@@ -19,27 +19,39 @@ namespace ProcessLib
 {
 namespace ComponentTransport
 {
-struct Field
+struct InterpolationPoint
 {
-    Field(std::string field_, std::vector<double> data_points_,
-          std::vector<std::vector<std::size_t>> indices_)
-        : field(field_), data_points(data_points_), indices(indices_)
+    InterpolationPoint(double value_,
+                       std::pair<double, double> neighboring_points_)
+        : value(value_), neighboring_points(neighboring_points_)
     {
     }
 
-    std::pair<double, double> getNeighboringDataPoints(double value);
+    double value;
+    std::pair<double, double> neighboring_points;
+};
 
-    std::string field;
-    std::vector<double> data_points;
+struct Field
+{
+    Field(std::string name_, std::vector<double> points_,
+          std::vector<std::vector<std::size_t>> indices_)
+        : name(name_), points(points_), indices(indices_)
+    {
+    }
+
+    std::pair<double, double> getNeighboringPoints(double value);
+
+    std::string name;
+    std::vector<double> points;
     std::vector<std::vector<std::size_t>> indices;
 };
 
-struct LookupTable
+struct Table
 {
-    LookupTable(std::vector<std::pair<std::string, int>>&&
-                    concentration_field_to_process_id_,
-                std::vector<Field>&& fields_,
-                std::map<std::string, std::vector<double>>&& table_)
+    Table(std::vector<std::pair<std::string, int>>&&
+              concentration_field_to_process_id_,
+          std::vector<Field>&& fields_,
+          std::map<std::string, std::vector<double>>&& table_)
         : concentration_field_to_process_id(
               std::move(concentration_field_to_process_id_)),
           fields(std::move(fields_)),

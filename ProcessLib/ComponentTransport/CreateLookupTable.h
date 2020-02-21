@@ -19,9 +19,9 @@ namespace ProcessLib
 {
 namespace ComponentTransport
 {
-struct LookupTable;
+struct Table;
 
-std::unique_ptr<LookupTable> createLookupTable(
+std::unique_ptr<Table> createTable(
     boost::optional<std::string> lookup_table_file,
     std::vector<std::pair<int, std::string>> const&
         process_id_to_component_name_map);
