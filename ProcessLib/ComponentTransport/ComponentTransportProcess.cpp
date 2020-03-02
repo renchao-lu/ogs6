@@ -12,6 +12,7 @@
 
 #include <cassert>
 
+#include "BaseLib/RunTime.h"
 #include "ProcessLib/SurfaceFlux/SurfaceFlux.h"
 #include "ProcessLib/SurfaceFlux/SurfaceFluxData.h"
 #include "ProcessLib/Utils/CreateLocalAssemblers.h"
@@ -224,7 +225,10 @@ void ComponentTransportProcess::postTimestepConcreteProcess(
         {
             // update process solutions via look-up table
             DBUG("Update process solutions via look-up table");
+            BaseLib::RunTime time_table;
+            time_table.start();
             _process_data.table->lookup(x, _xs_previous_timestep);
+            INFO("[time] Looking up table took %g s.", time_table.elapsed());
         }
 
         return;
