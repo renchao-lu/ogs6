@@ -142,12 +142,18 @@ void PhreeqcIO::doWaterChemistryCalculation(
 void PhreeqcIO::setAqueousSolutionsOrUpdateProcessSolutions(
     std::vector<GlobalVector*> const& process_solutions, Status const status)
 {
-    std::size_t const num_chemical_systems = _aqueous_solutions.size();
+    std::size_t const num_chemical_systems = _mesh.getNumberOfBaseNodes();
+
+    auto const chemical_system_map =
+        *_mesh.getProperties().template getPropertyVector<std::size_t>(
+            "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
+
     // Loop over chemical systems
     for (std::size_t chemical_system_id = 0;
          chemical_system_id < num_chemical_systems;
          ++chemical_system_id)
     {
+        auto const global_id = chemical_system_map[chemical_system_id];
         // Get chemical compostion of solution in a particular chemical system
         auto& aqueous_solution = _aqueous_solutions[chemical_system_id];
         auto& components = aqueous_solution.components;
@@ -178,11 +184,11 @@ void PhreeqcIO::setAqueousSolutionsOrUpdateProcessSolutions(
                     case Status::SettingAqueousSolutions:
                         // Set component concentrations.
                         component->amount =
-                            transport_process_solution->get(chemical_system_id);
+                            transport_process_solution->get(global_id);
                         break;
                     case Status::UpdatingProcessSolutions:
                         // Update solutions of component transport processes.
-                        transport_process_solution->set(chemical_system_id,
+                        transport_process_solution->set(global_id,
                                                         component->amount);
                         break;
                 }
@@ -195,9 +201,8 @@ void PhreeqcIO::setAqueousSolutionsOrUpdateProcessSolutions(
                     case Status::SettingAqueousSolutions:
                     {
                         // Set pH value by hydrogen concentration.
-                        aqueous_solution.pH =
-                            -std::log10(transport_process_solution->get(
-                                chemical_system_id));
+                        aqueous_solution.pH = -std::log10(
+                            transport_process_solution->get(global_id));
                         break;
                     }
                     case Status::UpdatingProcessSolutions:
@@ -205,7 +210,7 @@ void PhreeqcIO::setAqueousSolutionsOrUpdateProcessSolutions(
                         // Update hydrogen concentration by pH value.
                         auto hydrogen_concentration =
                             std::pow(10, -aqueous_solution.pH);
-                        transport_process_solution->set(chemical_system_id,
+                        transport_process_solution->set(global_id,
                                                         hydrogen_concentration);
                         break;
                     }
@@ -229,7 +234,7 @@ void PhreeqcIO::setAqueousSolutionsPrevFromDumpFile()
         OGS_FATAL("Could not open phreeqc dump file '%s'.", dump_file.c_str());
     }
 
-    std::size_t const num_chemical_systems = _aqueous_solutions.size();
+    std::size_t const num_chemical_systems = _mesh.getNumberOfBaseNodes();
     _dump->readDumpFile(in, num_chemical_systems);
 
     if (!in)
@@ -283,14 +288,21 @@ std::ostream& operator<<(std::ostream& os, PhreeqcIO const& phreeqc_io)
     }
 
     std::size_t const num_chemical_systems =
-        phreeqc_io._aqueous_solutions.size();
+        phreeqc_io._mesh.getNumberOfBaseNodes();
+
+    auto const chemical_system_map =
+        *phreeqc_io._mesh.getProperties()
+             .template getPropertyVector<std::size_t>(
+                 "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
+
     for (std::size_t chemical_system_id = 0;
          chemical_system_id < num_chemical_systems;
          ++chemical_system_id)
     {
+        auto const global_id = chemical_system_map[chemical_system_id];
         auto const& aqueous_solution =
             phreeqc_io._aqueous_solutions[chemical_system_id];
-        os << "SOLUTION " << chemical_system_id + 1 << "\n";
+        os << "SOLUTION " << global_id + 1 << "\n";
         os << aqueous_solution << "\n";
 
         auto const& dump = phreeqc_io._dump;
@@ -306,15 +318,15 @@ std::ostream& operator<<(std::ostream& os, PhreeqcIO const& phreeqc_io)
         os << "USE solution none" << "\n";
         os << "END" << "\n\n";
 
-        os << "USE solution " << chemical_system_id + 1 << "\n\n";
+        os << "USE solution " << global_id + 1 << "\n\n";
 
         auto const& equilibrium_phases = phreeqc_io._equilibrium_phases;
         if (!equilibrium_phases.empty())
         {
-            os << "EQUILIBRIUM_PHASES " << chemical_system_id + 1 << "\n";
+            os << "EQUILIBRIUM_PHASES " << global_id + 1 << "\n";
             for (auto const& equilibrium_phase : equilibrium_phases)
             {
-                equilibrium_phase.print(os, chemical_system_id);
+                equilibrium_phase.print(os, global_id);
             }
             os << "\n";
         }
@@ -322,10 +334,10 @@ std::ostream& operator<<(std::ostream& os, PhreeqcIO const& phreeqc_io)
         auto const& kinetic_reactants = phreeqc_io._kinetic_reactants;
         if (!kinetic_reactants.empty())
         {
-            os << "KINETICS " << chemical_system_id + 1 << "\n";
+            os << "KINETICS " << global_id + 1 << "\n";
             for (auto const& kinetic_reactant : kinetic_reactants)
             {
-                kinetic_reactant.print(os, chemical_system_id);
+                kinetic_reactant.print(os, global_id);
             }
             os << "-steps " << phreeqc_io._dt << "\n" << "\n";
         }
@@ -333,15 +345,16 @@ std::ostream& operator<<(std::ostream& os, PhreeqcIO const& phreeqc_io)
         auto const& surface = phreeqc_io._surface;
         if (!surface.empty())
         {
-                os << "SURFACE " << chemical_system_id + 1 << "\n";
-                std::size_t aqueous_solution_id =
-                    dump->aqueous_solutions_prev.empty()
-                        ? chemical_system_id + 1
-                        : num_chemical_systems + chemical_system_id + 1;
-                os << "-equilibrate with solution " << aqueous_solution_id << "\n";
-                os << "-sites_units DENSITY" << "\n";
-                os << surface << "\n";
-                os << "SAVE solution " << chemical_system_id + 1 << "\n";
+            os << "SURFACE " << global_id + 1 << "\n";
+            std::size_t aqueous_solution_id =
+                dump->aqueous_solutions_prev.empty()
+                    ? global_id + 1
+                    : num_chemical_systems + global_id + 1;
+            os << "-equilibrate with solution " << aqueous_solution_id << "\n";
+            os << "-sites_units DENSITY"
+               << "\n";
+            os << surface << "\n";
+            os << "SAVE solution " << global_id + 1 << "\n";
         }
 
         os << "END" << "\n\n";
@@ -407,11 +420,18 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
     int const num_skipped_lines = surface.empty() ? 1 : 2;
 
     std::size_t const num_chemical_systems =
-        phreeqc_io._aqueous_solutions.size();
+        phreeqc_io._mesh.getNumberOfBaseNodes();
+
+    auto const chemical_system_map =
+        *phreeqc_io._mesh.getProperties()
+             .template getPropertyVector<std::size_t>(
+                 "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
+
     for (std::size_t chemical_system_id = 0;
          chemical_system_id < num_chemical_systems;
          ++chemical_system_id)
     {
+        auto const global_id = chemical_system_map[chemical_system_id];
         // Skip equilibrium calculation result of initial solution
         for (int i = 0; i < num_skipped_lines; ++i)
         {
@@ -424,7 +444,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
             OGS_FATAL(
                 "Error when reading calculation result of Solution %u after "
                 "the reaction.",
-                chemical_system_id);
+                global_id);
         }
 
         std::vector<double> accepted_items;
@@ -449,8 +469,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         "Invalid argument. Could not convert string '%s' to "
                         "double for chemical system %d, column %d. Exception "
                         "'%s' was thrown.",
-                        items[item_id].c_str(), chemical_system_id, item_id,
-                        e.what());
+                        items[item_id].c_str(), global_id, item_id, e.what());
                 }
                 catch (const std::out_of_range& e)
                 {
@@ -458,8 +477,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         "Out of range error. Could not convert string '%s' to "
                         "double for chemical system %d, column %d. Exception "
                         "'%s' was thrown.",
-                        items[item_id].c_str(), chemical_system_id, item_id,
-                        e.what());
+                        items[item_id].c_str(), global_id, item_id, e.what());
                 }
                 accepted_items.push_back(value);
             }
@@ -513,7 +531,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         compare_by_name,
                         "Could not find equilibrium phase '" + item_name +
                             "'.");
-                    (*equilibrium_phase.amount)[chemical_system_id] =
+                    (*equilibrium_phase.amount)[global_id] =
                         accepted_items[item_id];
                     break;
                 }
@@ -524,7 +542,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         kinetic_reactants.begin(), kinetic_reactants.end(),
                         compare_by_name,
                         "Could not find kinetic reactant '" + item_name + "'.");
-                    (*kinetic_reactant.amount)[chemical_system_id] =
+                    (*kinetic_reactant.amount)[global_id] =
                         accepted_items[item_id];
                     break;
                 }
@@ -538,7 +556,7 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         compare_by_name,
                         "Could not find secondary variable '" + item_name +
                             "'.");
-                    (*secondary_variable.value)[chemical_system_id] =
+                    (*secondary_variable.value)[global_id] =
                         accepted_items[item_id];
                     break;
                 }
