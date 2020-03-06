@@ -68,6 +68,20 @@ createChemicalSolverInterface<ChemicalSolver::Phreeqc>(
         process_id_to_component_name_map,
     BaseLib::ConfigTree const& config, std::string const& output_directory)
 {
+    auto mesh_name =
+        //! \ogs_file_param{prj__chemical_system__mesh}
+        config.getConfigParameter<std::string>("mesh", meshes[0]->getName());
+
+    // Find and extract mesh from the list of meshes.
+    auto const& mesh = *BaseLib::findElementOrError(
+        begin(meshes), end(meshes),
+        [&mesh_name](auto const& mesh) {
+            assert(mesh != nullptr);
+            return mesh->getName() == mesh_name;
+        },
+        "Required mesh with name '" + mesh_name + "' not found.");
+    DBUG("Found mesh '%s' with id %d.", mesh.getName().c_str(), mesh.getID());
+
     auto path_to_database = parseDatabasePath(config);
 
     // solution
@@ -144,6 +158,7 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
         process_id_to_component_name_map,
     BaseLib::ConfigTree const& config, std::string const& /*output_directory*/)
 {
+    auto mesh = *meshes[0];
     auto path_to_database = parseDatabasePath(config);
 
     // solution
