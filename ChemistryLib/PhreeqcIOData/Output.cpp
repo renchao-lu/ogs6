@@ -57,7 +57,10 @@ std::ostream& operator<<(std::ostream& os, Output const& output)
         os << "-equilibrium_phases";
         for (auto const& equilibrium_phase_item : equilibrium_phase_items)
         {
-            os << " " << equilibrium_phase_item.name;
+            if (equilibrium_phase_item.name.find("dm_") == std::string::npos)
+            {
+                os << " " << equilibrium_phase_item.name;
+            }
         }
         os << "\n";
     }
@@ -69,7 +72,10 @@ std::ostream& operator<<(std::ostream& os, Output const& output)
         os << "-kinetic_reactants";
         for (auto const& kinetic_reactant_item : kinetic_reactant_items)
         {
-            os << " " << kinetic_reactant_item.name;
+            if (kinetic_reactant_item.name.find("dm_") == std::string::npos)
+            {
+                os << " " << kinetic_reactant_item.name;
+            }
         }
         os << "\n";
     }
