@@ -65,6 +65,22 @@ std::vector<EquilibriumPhase> createEquilibriumPhases(
                           (*amount)[global_id] = initial_amount;
                       });
 
+        auto transferred_amount = MeshLib::getOrCreateMeshProperty<double>(
+            const_cast<MeshLib::Mesh&>(mesh),
+            "dm_" + name,
+            MeshLib::MeshItemType::Node,
+            1);
+
+        std::fill(std::begin(*transferred_amount),
+                  std::end(*transferred_amount),
+                  std::numeric_limits<double>::quiet_NaN());
+
+        std::for_each(chemical_system_map.begin(),
+                      chemical_system_map.end(),
+                      [&transferred_amount](auto const& global_id) {
+                          (*transferred_amount)[global_id] = 0.;
+                      });
+
         equilibrium_phases.emplace_back(
             std::move(name), amount, saturation_index);
     }
