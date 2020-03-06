@@ -533,6 +533,9 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                             "'.");
                     (*equilibrium_phase.amount)[global_id] =
                         accepted_items[item_id];
+                    ++item_id;
+                    (*equilibrium_phase.transferred_amount)[global_id] =
+                        accepted_items[item_id];
                     break;
                 }
                 case ItemType::KineticReactant:
@@ -543,6 +546,9 @@ std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
                         compare_by_name,
                         "Could not find kinetic reactant '" + item_name + "'.");
                     (*kinetic_reactant.amount)[global_id] =
+                        accepted_items[item_id];
+                    ++item_id;
+                    (*kinetic_reactant.transferred_amount)[global_id] =
                         accepted_items[item_id];
                     break;
                 }
