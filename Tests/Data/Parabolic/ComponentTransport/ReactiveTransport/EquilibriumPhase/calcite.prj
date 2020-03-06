@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <OpenGeoSysProject>
-    <mesh>calcite.vtu</mesh>
+    <meshes>
+        <mesh>calcite.vtu</mesh>
+        <mesh>calcite-ReactiveDomain.vtu</mesh>
+    </meshes>
     <geometry>calcite.gml</geometry>
     <processes>
         <process>
@@ -370,6 +373,7 @@
         </output>
     </time_loop>
     <chemical_system chemical_solver="Phreeqc">
+        <mesh>calcite-ReactiveDomain</mesh>
         <database>PSINA_12_07_110615_DAV_s.dat</database>
         <solution>
             <temperature>25</temperature>
