@@ -30,9 +30,11 @@ struct EquilibriumPhase
 {
     EquilibriumPhase(std::string name_,
                      MeshLib::PropertyVector<double>* amount_,
+                     MeshLib::PropertyVector<double>* transferred_amount_,
                      double saturation_index_)
         : name(std::move(name_)),
           amount(amount_),
+          transferred_amount(transferred_amount_),
           saturation_index(saturation_index_)
     {
     }
@@ -41,6 +43,7 @@ struct EquilibriumPhase
 
     std::string const name;
     MeshLib::PropertyVector<double>* amount;
+    MeshLib::PropertyVector<double>* transferred_amount;
     double const saturation_index;
     static const ItemType item_type = ItemType::EquilibriumPhase;
 };

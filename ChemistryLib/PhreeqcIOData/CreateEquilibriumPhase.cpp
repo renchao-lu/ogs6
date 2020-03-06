@@ -82,7 +82,7 @@ std::vector<EquilibriumPhase> createEquilibriumPhases(
                       });
 
         equilibrium_phases.emplace_back(
-            std::move(name), amount, saturation_index);
+            std::move(name), amount, transferred_amount, saturation_index);
     }
 
     return equilibrium_phases;
