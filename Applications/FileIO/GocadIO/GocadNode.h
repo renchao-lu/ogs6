@@ -60,7 +60,7 @@ public:
                                               FaceDirection::W);
                 break;
             default:
-                OGS_FATAL("GocadNode::setFaceSet(): unknown face indicator %d.",
+                OGS_FATAL("GocadNode::setFaceSet(): unknown face indicator {:d}.",
                           face_indicator);
         }
     }

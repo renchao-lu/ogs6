@@ -17,7 +17,7 @@
 
 #include <boost/dynamic_bitset.hpp>
 
-#include <logog/include/logog.hpp>
+#include <spdlog/spdlog.h>
 
 #include "MeshLib/Elements/Element.h"
 

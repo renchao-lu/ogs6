@@ -97,7 +97,7 @@ std::vector<std::unique_ptr<Component>> createComponents(
                              return c->name == component_name;
                          }) != components.end())
         {
-            OGS_FATAL("Found duplicates with the same component name tag '%s'.",
+            OGS_FATAL("Found duplicates with the same component name tag '{:s}'.",
                       component->name.c_str());
         }
 

@@ -94,7 +94,7 @@ bool createSurface(GeoLib::Polyline const& ply,
     int const gmsh_return_value = std::system(gmsh_command.c_str());
     if (gmsh_return_value != 0)
     {
-        WARN("Call to '%s' returned non-zero value %d.", gmsh_command.c_str(),
+        WARN("Call to '{:s}' returned non-zero value {:d}.", gmsh_command.c_str(),
              gmsh_return_value);
     }
     auto surface_mesh =
@@ -105,10 +105,10 @@ bool createSurface(GeoLib::Polyline const& ply,
         return false;
     }
     if (std::remove((file_base_name + ".geo").c_str()) !=0)
-        WARN("Could not remove temporary file '%s'.",
+        WARN("Could not remove temporary file '{:s}'.",
             (file_base_name + ".geo").c_str());
     if (std::remove((file_base_name + ".msh").c_str()) !=0)
-        WARN("Could not remove temporary file '%s'.",
+        WARN("Could not remove temporary file '{:s}'.",
             (file_base_name + ".msh").c_str());
 
     // convert the surface mesh into a geometric surface

@@ -11,7 +11,7 @@
 #pragma once
 
 #include <Eigen/Eigenvalues>
-#include <logog/include/logog.hpp>
+#include <spdlog/spdlog.h>
 
 #include "MaterialLib/SolidModels/Ehlers.h"
 
@@ -28,7 +28,7 @@ inline double calculateDamage(double const kappa_d, double const alpha_d,
 
     if (damage < 0. || damage >= 1.)
     {
-        OGS_FATAL("Damage value %g outside of [0,1) interval.", damage);
+        OGS_FATAL("Damage value {:g} outside of [0,1) interval.", damage);
     }
 
     return damage;

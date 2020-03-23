@@ -181,7 +181,7 @@ public:
             {
                 OGS_FATAL(
                     "Setting initial conditions for stress from integration "
-                    "point data and from a parameter '%s' is not possible "
+                    "point data and from a parameter '{:s}' is not possible "
                     "simultaneously.",
                     _process_data.initial_stress->name.c_str());
             }

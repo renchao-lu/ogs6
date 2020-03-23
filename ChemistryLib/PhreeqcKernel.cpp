@@ -85,7 +85,7 @@ void PhreeqcKernel::loadDatabase(std::string const& database)
     std::ifstream in(database);
     if (!in)
     {
-        OGS_FATAL("Unable to open database file '%s'.", database.c_str());
+        OGS_FATAL("Unable to open database file '{:s}'.", database.c_str());
     }
     assert(phrq_io->get_istream() == nullptr);
     phrq_io->push_istream(&in, false);
@@ -107,7 +107,7 @@ void PhreeqcKernel::reinitializeRates()
             malloc(sizeof(char) * reaction_rate.commands().size() + 1));
         if (rates[rate_id].commands == nullptr)
         {
-            OGS_FATAL("Could not allocate memory for rate[%d] commands.",
+            OGS_FATAL("Could not allocate memory for rate[{:d}] commands.",
                       rate_id);
         }
         reaction_rate.commands().copy(rates[rate_id].commands,

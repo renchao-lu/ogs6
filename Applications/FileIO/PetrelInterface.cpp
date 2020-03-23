@@ -45,7 +45,7 @@ PetrelInterface::PetrelInterface(std::list<std::string> &sfc_fnames,
             in.close();
         }
         else
-            WARN("PetrelInterface::PetrelInterface(): \tCould not open file %s.",
+            WARN("PetrelInterface::PetrelInterface(): \tCould not open file {:s}.",
                  it->c_str());
     }
 
@@ -61,7 +61,7 @@ PetrelInterface::PetrelInterface(std::list<std::string> &sfc_fnames,
             in.close();
         }
         else
-            WARN("PetrelInterface::PetrelInterface(): \tCould not open well path file %s.", it->c_str());
+            WARN("PetrelInterface::PetrelInterface(): \tCould not open well path file {:s}.", it->c_str());
     }
 
     // store data in GEOObject
@@ -122,7 +122,7 @@ void PetrelInterface::readPetrelSurface(std::istream &in)
     } else
         WARN(
             "PetrelInterface::readPetrelSurface(): problem reading petrel "
-            "points from line\n'%s'.",
+            "points from line\n'{:s}'.",
             line.c_str());
 }
 
@@ -141,7 +141,7 @@ void PetrelInterface::readPetrelWellTrace(std::istream &in)
         std::list<std::string> str_list(BaseLib::splitString(line, ' '));
         std::list<std::string>::const_iterator it(str_list.begin());
         while (it != str_list.end()) {
-            INFO("PetrelInterface::readPetrelWellTrace(): well name: %s.", it->c_str());
+            INFO("PetrelInterface::readPetrelWellTrace(): well name: {:s}.", it->c_str());
             ++it;
         }
 
@@ -151,7 +151,7 @@ void PetrelInterface::readPetrelWellTrace(std::istream &in)
         str_list = BaseLib::splitString(line, ' ');
         it = str_list.begin();
         while (it != str_list.end()) {
-            INFO("PetrelInterface::readPetrelWellTrace(): well head x coord: %s.", it->c_str());
+            INFO("PetrelInterface::readPetrelWellTrace(): well head x coord: {:s}.", it->c_str());
             ++it;
         }
         it = (str_list.end())--;
@@ -165,7 +165,7 @@ void PetrelInterface::readPetrelWellTrace(std::istream &in)
         str_list = BaseLib::splitString(line, ' ');
         it = str_list.begin();
         while (it != str_list.end()) {
-            INFO("PetrelInterface::readPetrelWellTrace(): well head y coord: %s.", it->c_str());
+            INFO("PetrelInterface::readPetrelWellTrace(): well head y coord: {:s}.", it->c_str());
             ++it;
         }
         it = (str_list.end())--;
@@ -178,14 +178,14 @@ void PetrelInterface::readPetrelWellTrace(std::istream &in)
         str_list = BaseLib::splitString(line, ' ');
         it = str_list.begin();
         while (it != str_list.end()) {
-            INFO("PetrelInterface::readPetrelWellTrace(): well kb entry: %s.", it->c_str());
+            INFO("PetrelInterface::readPetrelWellTrace(): well kb entry: {:s}.", it->c_str());
             ++it;
         }
         it = (str_list.end())--;
         --it;
         double well_kb(strtod((*it).c_str(), &buf));
 
-        INFO("PetrelInterface::readPetrelWellTrace(): %f, %f, %f.",
+        INFO("PetrelInterface::readPetrelWellTrace(): {:f}, {:f}, {:f}.",
              well_head_x,
              well_head_y,
              well_kb);
@@ -218,7 +218,7 @@ void PetrelInterface::readPetrelWellTraceData(std::istream &in)
     std::list<std::string> str_list = BaseLib::splitString(line, ' ');
     auto it = str_list.begin();
     while (it != str_list.end()) {
-        INFO("PetrelInterface::readPetrelWellTraceData(): column information: %s.", it->c_str());
+        INFO("PetrelInterface::readPetrelWellTraceData(): column information: {:s}.", it->c_str());
         ++it;
     }
 

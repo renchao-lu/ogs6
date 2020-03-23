@@ -28,7 +28,7 @@ void setConsoleLogLevel(std::string const& level_string)
     auto const level = string_to_log_level.find(level_string);
     if (level == string_to_log_level.end())
     {
-        ERR("'%s' is not a valid log level!", level_string);
+        ERR("'{:s}' is not a valid log level!", level_string);
         OGS_FATAL("Wrong log level string.");
     }
     console->set_level(level->second);

@@ -97,7 +97,7 @@ void checkRequiredProperties(Medium const& medium,
     {
         if (!medium.hasProperty(p))
         {
-            OGS_FATAL("The property '%s' is missing in the medium definition.",
+            OGS_FATAL("The property '{:s}' is missing in the medium definition.",
                       property_enum_to_string[p].c_str());
         }
     }

@@ -38,8 +38,8 @@ void MaterialSpatialDistributionMap::checkElementHasMedium(std::size_t const ele
     if (_media.find(material_id) == _media.end())
     {
         OGS_FATAL(
-                "There is no medium definition for element %d with material "
-                "ID %d. Please define a medium for each material.",
+                "There is no medium definition for element {:d} with material "
+                "ID {:d}. Please define a medium for each material.",
                 element_id, material_id);
     }
 }

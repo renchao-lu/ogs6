@@ -46,7 +46,7 @@ MeshLib::Mesh* MeshIO::loadMeshFromFile(const std::string& file_name)
     std::ifstream in (file_name.c_str(),std::ios::in);
     if (!in.is_open())
     {
-        WARN("MeshIO::loadMeshFromFile() - Could not open file %s.", file_name.c_str());
+        WARN("MeshIO::loadMeshFromFile() - Could not open file {:s}.", file_name.c_str());
         return nullptr;
     }
 
@@ -105,7 +105,7 @@ MeshLib::Mesh* MeshIO::loadMeshFromFile(const std::string& file_name)
                     materials.push_back(readMaterialID(ss));
                     MeshLib::Element *elem(readElement(ss,nodes));
                     if (elem == nullptr) {
-                        ERR("Reading mesh element %d from file '%s' failed.", i,
+                        ERR("Reading mesh element {:d} from file '{:s}' failed.", i,
                             file_name.c_str());
                         // clean up the elements vector
                         std::for_each(elements.begin(), elements.end(),
@@ -146,8 +146,8 @@ MeshLib::Mesh* MeshIO::loadMeshFromFile(const std::string& file_name)
                                  materials.cend());
         }
         INFO("\t... finished.");
-        INFO("Nr. Nodes: %d.", nodes.size());
-        INFO("Nr. Elements: %d.", elements.size());
+        INFO("Nr. Nodes: {:d}.", nodes.size());
+        INFO("Nr. Elements: {:d}.", elements.size());
 
         in.close();
         return mesh;

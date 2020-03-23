@@ -230,7 +230,7 @@ bool Polyline::isCoplanar() const
     {
         if (!MathLib::isCoplanar(p0, p1, p2, *this->getPoint(i)))
         {
-            DBUG ("Point %d is not coplanar to the first three points of the line.", i);
+            DBUG ("Point {:d} is not coplanar to the first three points of the line.", i);
             return false;
         }
     }
@@ -590,7 +590,7 @@ bool containsEdge (const Polyline& ply, std::size_t id0, std::size_t id1)
 {
     if (id0 == id1)
     {
-        ERR("no valid edge id0 == id1 == %d.", id0);
+        ERR("no valid edge id0 == id1 == {:d}.", id0);
         return false;
     }
     if (id0 > id1)

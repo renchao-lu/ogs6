@@ -65,21 +65,21 @@ int main(int argc, char *argv[])
     const unsigned long mem_with_mesh (mem_watch.getVirtMemUsage());
     if (mem_with_mesh>0)
     {
-        INFO ("Memory size: %i MB", (mem_with_mesh - mem_without_mesh)/(1024*1024));
+        INFO ("Memory size: {:i} MB", (mem_with_mesh - mem_without_mesh)/(1024*1024));
         (void)mem_with_mesh;
     }
-    INFO ("Time for reading: %g s", run_time.elapsed());
+    INFO ("Time for reading: {:g} s", run_time.elapsed());
 
     // Geometric information
     const GeoLib::AABB aabb(MeshLib::MeshInformation::getBoundingBox(*mesh));
     auto minPt(aabb.getMinPoint());
     auto maxPt(aabb.getMaxPoint());
     INFO("Node coordinates:");
-    INFO("\tx [%g, %g] (extent %g)", minPt[0], maxPt[0], maxPt[0]-minPt[0]);
-    INFO("\ty [%g, %g] (extent %g)", minPt[1], maxPt[1], maxPt[1]-minPt[1]);
-    INFO("\tz [%g, %g] (extent %g)", minPt[2], maxPt[2], maxPt[2]-minPt[2]);
+    INFO("\tx [{:g}, {:g}] (extent {:g})", minPt[0], maxPt[0], maxPt[0]-minPt[0]);
+    INFO("\ty [{:g}, {:g}] (extent {:g})", minPt[1], maxPt[1], maxPt[1]-minPt[1]);
+    INFO("\tz [{:g}, {:g}] (extent {:g})", minPt[2], maxPt[2], maxPt[2]-minPt[2]);
 
-    INFO("Edge length: [%g, %g]", mesh->getMinEdgeLength(), mesh->getMaxEdgeLength());
+    INFO("Edge length: [{:g}, {:g}]", mesh->getMinEdgeLength(), mesh->getMaxEdgeLength());
 
     // Element information
     const std::array<unsigned, 7> nr_ele_types(MeshLib::MeshInformation::getNumberOfElementTypes(*mesh));
@@ -87,53 +87,53 @@ int main(int argc, char *argv[])
     unsigned etype = 0;
     if (nr_ele_types[etype] > 0)
     {
-        INFO("\t%d lines", nr_ele_types[etype]);
+        INFO("\t{:d} lines", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d triangles", nr_ele_types[etype]);
+        INFO("\t{:d} triangles", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d quads", nr_ele_types[etype]);
+        INFO("\t{:d} quads", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d tetrahedra", nr_ele_types[etype]);
+        INFO("\t{:d} tetrahedra", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d hexahedra", nr_ele_types[etype]);
+        INFO("\t{:d} hexahedra", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d pyramids", nr_ele_types[etype]);
+        INFO("\t{:d} pyramids", nr_ele_types[etype]);
     }
     if (nr_ele_types[++etype] > 0)
     {
-        INFO("\t%d prisms", nr_ele_types[etype]);
+        INFO("\t{:d} prisms", nr_ele_types[etype]);
     }
 
     std::vector<std::string> const& vec_names (mesh->getProperties().getPropertyVectorNames());
-    INFO("There are %d properties in the mesh:", vec_names.size());
+    INFO("There are {:d} properties in the mesh:", vec_names.size());
     for (const auto& vec_name : vec_names)
     {
         if (auto const vec_bounds =
                 MeshLib::MeshInformation::getValueBounds<int>(*mesh, vec_name))
         {
-            INFO("\t%s: [%d, %d]", vec_name.c_str(), vec_bounds->first,
+            INFO("\t{:s}: [{:d}, {:d}]", vec_name.c_str(), vec_bounds->first,
                  vec_bounds->second);
         }
         else if (auto const vec_bounds =
                      MeshLib::MeshInformation::getValueBounds<double>(*mesh,
                                                                       vec_name))
         {
-            INFO("\t%s: [%g, %g]", vec_name.c_str(), vec_bounds->first,
+            INFO("\t{:s}: [{:g}, {:g}]", vec_name.c_str(), vec_bounds->first,
                  vec_bounds->second);
         }
         else
         {
-            INFO("\t%s: Could not get value bounds for property vector.",
+            INFO("\t{:s}: Could not get value bounds for property vector.",
                  vec_name.c_str());
         }
     }
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
         unsigned const n_holes (MeshLib::MeshValidation::detectHoles(*mesh));
         if (n_holes > 0)
         {
-            INFO("%d hole(s) detected within the mesh", n_holes);
+            INFO("{:d} hole(s) detected within the mesh", n_holes);
         }
         else
         {
