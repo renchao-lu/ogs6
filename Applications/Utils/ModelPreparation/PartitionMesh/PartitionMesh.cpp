@@ -14,7 +14,12 @@
 
 #include <tclap/CmdLine.h>
 
-#include "Applications/ApplicationsLib/LogogSetup.h"
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <climits>
+#endif
+
 #include "InfoLib/GitInfo.h"
 #include "BaseLib/CPUTime.h"
 #include "BaseLib/FileTools.h"
@@ -28,8 +33,6 @@ using namespace ApplicationUtils;
 
 int main(int argc, char* argv[])
 {
-    ApplicationsLib::LogogSetup logog_setup;
-
     TCLAP::CmdLine cmd(
         "Partition a mesh for parallel computing."
         "The tasks of this tool are in twofold:\n"
