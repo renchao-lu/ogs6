@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
         std::cout.setf(std::ios::unitbuf);
     }
 
-    logog_setup.setLevel(log_level_arg.getValue());
+    BaseLib::setConsoleLogLevel(log_level_arg.getValue());
 
     INFO("This is OpenGeoSys-6 version {:s}.", GitInfoLib::GitInfo::ogs_version);
 
@@ -165,10 +165,12 @@ int main(int argc, char* argv[])
             controller->Initialize(&argc, &argv, 1);
             vtkMPIController::SetGlobalController(controller);
 
+            /* TODO (naumov) BEFORE MERGING SPDLOG
             logog_setup.setFormatter(
                 std::make_unique<BaseLib::TemplateLogogFormatterSuppressedGCC<
                     TOPIC_LEVEL_FLAG | TOPIC_FILE_NAME_FLAG |
                     TOPIC_LINE_NUMBER_FLAG>>());
+                    */
 #endif
             run_time.start();
 

@@ -150,6 +150,7 @@ endif()
 
 option(OGS_USE_MKL "Use Intel MKL" OFF)
 
+# TODO (naumov) BEFORE SPDLOG MERGE
 # Logging
 set(OGS_LOG_LEVEL
     "LOGOG_LEVEL_DEBUG"

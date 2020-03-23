@@ -17,10 +17,9 @@
 
 #include "gtest/gtest.h"
 
-#include "Applications/ApplicationsLib/LogogSetup.h"
 #include "Applications/ApplicationsLib/LinearSolverLibrarySetup.h"
+#include "BaseLib/Logging.h"
 #include "NumLib/DOF/GlobalMatrixProviders.h"
-#include "BaseLib/TemplateLogogFormatterSuppressedGCC.h"
 
 #ifdef OGS_BUILD_GUI
 #include <QCoreApplication>
@@ -51,24 +50,16 @@ int main(int argc, char* argv[])
     QCoreApplication app(argc, argv, false);
 #endif
 
-    // Attention: Order matters!
-    // logog_setup must be created first, then the linear_solver_library_setup,
-    // because destruction order is the reverse of the creation order and the
-    // destructor of linear_solver_library_setup might print log messages.
-    // The methods on logog_setup must be called after the construction of
-    // linear_solver_library_setup since they require, e.g., that MPI_Init()
-    // has been called before.
-
-    ApplicationsLib::LogogSetup logog_setup;
-
     ApplicationsLib::LinearSolverLibrarySetup linear_solver_library_setup(
                 argc, argv);
 
+    /* TODO (naumov) BEFORE MERGING SPDLOG
     logog_setup.setFormatter(
         std::make_unique<BaseLib::TemplateLogogFormatterSuppressedGCC<
             TOPIC_LEVEL_FLAG | TOPIC_FILE_NAME_FLAG |
             TOPIC_LINE_NUMBER_FLAG>>());
-    logog_setup.setLevel(logLevel);
+            */
+    BaseLib::setConsoleLogLevel(logLevel);
 
     try
     {
