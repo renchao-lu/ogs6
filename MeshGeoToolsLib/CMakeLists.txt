@@ -6,4 +6,8 @@ ogs_add_library(MeshGeoToolsLib ${SOURCES})
 
 target_link_libraries(MeshGeoToolsLib
                       PUBLIC GeoLib MathLib
-                      PRIVATE BaseLib MeshLib logog)
+                      PRIVATE BaseLib MeshLib)
+
+if(OGS_USE_PCH)
+    cotire(MeshGeoToolsLib)
+endif()

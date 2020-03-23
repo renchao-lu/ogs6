@@ -133,7 +133,7 @@ target_link_libraries(VtkVis
                              DataHolderLib
                              QtBase
                              vtkIOImage
-                      PRIVATE MathLib ApplicationsFileIO Qt5::Gui logog)
+                      PRIVATE MathLib ApplicationsFileIO Qt5::Gui)
 
 if(OGS_USE_NETCDF)
     target_link_libraries(VtkVis PRIVATE NetCdfDialogLib)
