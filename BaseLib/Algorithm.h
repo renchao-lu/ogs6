@@ -16,6 +16,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include "Error.h"
+#include "StringTools.h"
 
 namespace BaseLib
 {
