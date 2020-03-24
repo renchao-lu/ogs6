@@ -122,6 +122,7 @@ int main(int argc, char* argv[])
     }
 
     BaseLib::setConsoleLogLevel(log_level_arg.getValue());
+    spdlog::set_pattern("%^%L%$ %v");
     spdlog::set_error_handler([](const std::string& msg) {
         std::cerr << "spdlog error: " << msg << std::endl;
         OGS_FATAL("spdlog logger error occured.");
@@ -169,6 +170,11 @@ int main(int argc, char* argv[])
             controller->Initialize(&argc, &argv, 1);
             vtkMPIController::SetGlobalController(controller);
 
+            {   // Can be called only after MPI_INIT.
+                int mpi_rank;
+                MPI_Comm_rank(PETSC_COMM_WORLD, &mpi_rank);
+                spdlog::set_pattern(fmt::format("[{}] %^%L%$  %v", mpi_rank));
+            }
             /* TODO (naumov) BEFORE MERGING SPDLOG
             logog_setup.setFormatter(
                 std::make_unique<BaseLib::TemplateLogogFormatterSuppressedGCC<

@@ -13,10 +13,20 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <map>
 
+#ifdef USE_PETSC
+#include <petscsys.h>
+#include <mpi.h>
+#endif
+
 #include "Error.h"
+
 namespace BaseLib
 {
+#ifdef USE_PETSC
+std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("ogs");
+#else   // USE_PETSC
 std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_st("ogs");
+#endif  // USE_PETSC
 
 void setConsoleLogLevel(std::string const& level_string)
 {
