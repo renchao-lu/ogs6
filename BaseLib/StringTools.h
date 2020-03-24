@@ -80,7 +80,4 @@ template<typename T> std::string tostring(T const& value)
 //! \overload
 std::string const& tostring(std::string const& value);
 
-//! returns printf-like formatted string
-std::string format(const char* format_string, ... );
-
 } // end namespace BaseLib

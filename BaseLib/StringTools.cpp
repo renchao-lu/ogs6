@@ -87,21 +87,4 @@ std::string const& tostring(std::string const& value)
     return value;
 }
 
-std::string format(const char* format_str, ... )
-{
-    va_list args;
-    va_start(args, format_str);
-    // get the number of chars to write
-    va_list args_tmp;
-    va_copy(args_tmp, args);
-    int char_length = std::vsnprintf(nullptr, 0, format_str, args_tmp);
-    va_end(args_tmp);
-    // allocate buffer and store formatted output there
-    std::vector<char> buffer(char_length + 1); // note +1 for null terminator
-    vsnprintf(buffer.data(), buffer.size(), format_str, args);
-    va_end(args);
-
-    return std::string(buffer.data());
-}
-
-} // end namespace BaseLib
+}  // end namespace BaseLib
