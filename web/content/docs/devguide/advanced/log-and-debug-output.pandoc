@@ -35,7 +35,6 @@ For more information see the [spdlog
 wiki](https://github.com/gabime/spdlog/wiki).
 
 On release builds the default log level is `INFO`, for debug builds it is
-`DEBUG` and it can be overriden with the CMake option
-`OGS_LOG_LEVEL`. You can completely disable logging with the CMake-option
-`OGS_DISABLE_LOGGING` set to `ON`. Additionally you can adjust log level on the
-command line with `-l <LOG_LEVEL>` flag.
+`DEBUG` and it can be overriden with the CMake option `OGS_LOG_LEVEL`.
+Additionally you can adjust log level on the command line with `-l <LOG_LEVEL>`
+flag.
