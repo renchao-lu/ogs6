@@ -22,7 +22,8 @@ namespace PhreeqcKernelData
 {
 std::unique_ptr<EquilibriumReactants> createEquilibriumReactants(
     boost::optional<BaseLib::ConfigTree> const& config,
-    MeshLib::Mesh const& mesh)
+    MeshLib::Mesh const& mesh,
+    MeshLib::PropertyVector<std::size_t> const& chemical_system_map)
 {
     if (!config)
     {
@@ -53,7 +54,16 @@ std::unique_ptr<EquilibriumReactants> createEquilibriumReactants(
             name,
             MeshLib::MeshItemType::Node,
             1);
-        std::fill(amount->begin(), amount->end(), initial_amount);
+
+        std::fill(std::begin(*amount),
+                  std::end(*amount),
+                  std::numeric_limits<double>::quiet_NaN());
+
+        std::for_each(chemical_system_map.begin(),
+                      chemical_system_map.end(),
+                      [&amount, initial_amount](auto const& global_id) {
+                          (*amount)[global_id] = initial_amount;
+                      });
 
         phase_components.emplace_back(
             std::move(name), initial_amount, saturation_index);

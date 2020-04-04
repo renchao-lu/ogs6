@@ -22,7 +22,8 @@ namespace PhreeqcKernelData
 {
 std::unique_ptr<Kinetics> createKineticReactants(
     boost::optional<BaseLib::ConfigTree> const& config,
-    MeshLib::Mesh const& mesh)
+    MeshLib::Mesh const& mesh,
+    MeshLib::PropertyVector<std::size_t> const& chemical_system_map)
 {
     if (!config)
     {
@@ -47,7 +48,16 @@ std::unique_ptr<Kinetics> createKineticReactants(
             name,
             MeshLib::MeshItemType::Node,
             1);
-        std::fill(std::begin(*amount), std::end(*amount), initial_amount);
+
+        std::fill(std::begin(*amount),
+                  std::end(*amount),
+                  std::numeric_limits<double>::quiet_NaN());
+
+        std::for_each(chemical_system_map.begin(),
+                      chemical_system_map.end(),
+                      [&amount, initial_amount](auto const& global_id) {
+                          (*amount)[global_id] = initial_amount;
+                      });
 
         kinetic_reactants.emplace_back(name, initial_amount);
     }

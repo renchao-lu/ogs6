@@ -374,7 +374,7 @@
         </output>
     </time_loop>
     <chemical_system chemical_solver="PhreeqcKernel">
-        <!--mesh>calcite_ReactiveDomain</mesh-->
+        <mesh>calcite_ReactiveDomain</mesh>
         <database>PSINA_12_07_110615_DAV_s.dat</database>
         <solution>
             <temperature>25</temperature>
