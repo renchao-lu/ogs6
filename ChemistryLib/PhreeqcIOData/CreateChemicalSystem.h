@@ -10,20 +10,25 @@
 
 #pragma once
 
-#include <vector>
+#include <memory>
 
 namespace BaseLib
 {
 class ConfigTree;
 }
 
+namespace MeshLib
+{
+class Mesh;
+}
+
 namespace ChemistryLib
 {
 namespace PhreeqcIOData
 {
-struct Component;
+struct ChemicalSystem;
 
-std::vector<Component> createSolutionComponents(
-    BaseLib::ConfigTree const& config);
+std::unique_ptr<ChemicalSystem> createChemicalSystem(
+    BaseLib::ConfigTree const& config, MeshLib::Mesh const& mesh);
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

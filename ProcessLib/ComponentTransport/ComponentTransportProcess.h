@@ -102,9 +102,7 @@ public:
         ComponentTransportProcessData&& process_data,
         SecondaryVariableCollection&& secondary_variables,
         bool const use_monolithic_scheme,
-        std::unique_ptr<ProcessLib::SurfaceFluxData>&& surfaceflux,
-        std::vector<std::pair<int, std::string>>&&
-            process_id_to_component_name_map);
+        std::unique_ptr<ProcessLib::SurfaceFluxData>&& surfaceflux);
 
     //! \name ODESystem interface
     //! @{
@@ -116,14 +114,15 @@ public:
                             MathLib::Point3d const& p, double const t,
                             std::vector<GlobalVector*> const& x) const override;
 
-    std::vector<std::pair<int, std::string>> const&
-    getProcessIDToComponentNameMap() const
-    {
-        return _process_id_to_component_name_map;
-    }
-
     void setCoupledTermForTheStaggeredSchemeToLocalAssemblers(
         int const process_id) override;
+
+    std::vector<GlobalVector> interpolateProcessSolutions(
+        std::vector<GlobalVector*> const& x) override;
+
+    void extrapolateIntPtProcessSolutions(
+        std::vector<GlobalVector*>& process_solutions,
+        std::vector<GlobalVector> const& transport_solutions) override;
 
     void preTimestepConcreteProcess(std::vector<GlobalVector*> const& x,
                                     const double /*t*/,
@@ -164,9 +163,6 @@ private:
     std::vector<std::unique_ptr<GlobalVector>> _xs_previous_timestep;
 
     std::unique_ptr<ProcessLib::SurfaceFluxData> _surfaceflux;
-
-    std::vector<std::pair<int, std::string>> const
-        _process_id_to_component_name_map;
 };
 
 }  // namespace ComponentTransport

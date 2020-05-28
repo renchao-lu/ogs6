@@ -20,9 +20,9 @@ namespace ChemistryLib
 namespace PhreeqcKernelData
 {
 InitialAqueousSolution createInitialAqueousSolution(
-    BaseLib::ConfigTree const& config,
+    BaseLib::ConfigTree const& config/*,
     std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map)
+        process_id_to_component_name_map*/)
 {
     std::map<std::string, cxxISolutionComp> components;
     //! \ogs_file_param{prj__chemical_system__solution__components}
@@ -36,34 +36,33 @@ InitialAqueousSolution createInitialAqueousSolution(
         components.emplace(component_name, component);
     }
 
-    for (auto const& component : components)
-    {
-        auto process_id_to_component_name_pair =
-            std::find_if(process_id_to_component_name_map.begin(),
-                         process_id_to_component_name_map.end(),
-                         [&component](auto const& pair) {
-                             return pair.second == component.first;
-                         });
+    //    for (auto const& component : components)
+    //    {
+    //        auto process_id_to_component_name_pair =
+    //            std::find_if(process_id_to_component_name_map.begin(),
+    //                         process_id_to_component_name_map.end(),
+    //                         [&component](auto const& pair) {
+    //                             return pair.second == component.first;
+    //                         });
 
-        if (process_id_to_component_name_pair ==
-            process_id_to_component_name_map.end())
-        {
-            OGS_FATAL(
-                "Component {:s} given in <solution>/<components> is not found "
-                "in "
-                "specified coupled processes (see "
-                "<process>/<process_variables>/<concentration>).",
-                component.first);
-        }
-    }
+    //        if (process_id_to_component_name_pair ==
+    //            process_id_to_component_name_map.end())
+    //        {
+    //            OGS_FATAL(
+    //                "Component {:s} given in <solution>/<components> is not
+    //                found " "in " "specified coupled processes (see "
+    //                "<process>/<process_variables>/<concentration>).",
+    //                component.first);
+    //        }
+    //    }
 
-    if (components.size() + 1 != process_id_to_component_name_map.size())
-    {
-        OGS_FATAL(
-            "The number of components given in <solution>/<components> is not "
-            "in line with the number of transport processes - 1 which stands "
-            "for the transport process of hydrogen.");
-    }
+    //    if (components.size() + 1 != process_id_to_component_name_map.size())
+    //    {
+    //        OGS_FATAL(
+    //            "The number of components given in <solution>/<components> is
+    //            not " "in line with the number of transport processes - 1
+    //            which stands " "for the transport process of hydrogen.");
+    //    }
 
     auto const charge_balance = createChargeBalance(config);
     if (charge_balance == ChargeBalance::pH)

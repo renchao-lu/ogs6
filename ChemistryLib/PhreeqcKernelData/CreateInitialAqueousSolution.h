@@ -25,8 +25,8 @@ namespace PhreeqcKernelData
 class InitialAqueousSolution;
 
 InitialAqueousSolution createInitialAqueousSolution(
-    BaseLib::ConfigTree const& config,
+    BaseLib::ConfigTree const& config/*,
     std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map);
+        process_id_to_component_name_map*/);
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib

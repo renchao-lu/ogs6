@@ -13,31 +13,43 @@
 #include "BaseLib/ConfigTree.h"
 #include "ChemistryLib/Common/CreateChargeBalance.h"
 #include "CreateSolutionComponent.h"
+#include "MeshLib/Mesh.h"
 
 namespace ChemistryLib
 {
 namespace PhreeqcIOData
 {
-AqueousSolution createAqueousSolution(
-    BaseLib::ConfigTree const& config,
-    std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map)
+std::unique_ptr<AqueousSolution> createAqueousSolution(
+    BaseLib::ConfigTree const& config, MeshLib::Mesh const& mesh)
 {
     //! \ogs_file_param{prj__chemical_system__solution__temperature}
     auto const temperature = config.getConfigParameter<double>("temperature");
 
-    //! \ogs_file_param{prj__chemical_system__solution__pressure}
-    auto const pressure = config.getConfigParameter<double>("pressure");
+    auto pe = MeshLib::getOrCreateMeshProperty<double>(
+        const_cast<MeshLib::Mesh&>(mesh),
+        "pe",
+        MeshLib::MeshItemType::IntegrationPoint,
+        1);
 
     //! \ogs_file_param{prj__chemical_system__solution__pe}
-    auto const pe = config.getConfigParameter<double>("pe");
+    auto const pe0 = config.getConfigParameter<double>("pe");
 
-    auto components =
-        createSolutionComponents(config, process_id_to_component_name_map);
+    auto components = createSolutionComponents(config);
 
     auto charge_balance = createChargeBalance(config);
 
-    return {temperature, pressure, pe, std::move(components), charge_balance};
+    auto water_mass = MeshLib::getOrCreateMeshProperty<double>(
+        const_cast<MeshLib::Mesh&>(mesh),
+        "water_mass",
+        MeshLib::MeshItemType::IntegrationPoint,
+        1);
+
+    return std::make_unique<AqueousSolution>(temperature,
+                                             pe,
+                                             pe0,
+                                             std::move(components),
+                                             charge_balance,
+                                             water_mass);
 }
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

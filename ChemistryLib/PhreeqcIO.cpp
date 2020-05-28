@@ -18,8 +18,12 @@
 
 #include "BaseLib/Algorithm.h"
 #include "BaseLib/ConfigTreeUtil.h"
+#include "MaterialLib/MPL/Medium.h"
 #include "MeshLib/Mesh.h"
+#include "ParameterLib/SpatialPosition.h"
+
 #include "PhreeqcIOData/AqueousSolution.h"
+#include "PhreeqcIOData/ChemicalSystem.h"
 #include "PhreeqcIOData/Dump.h"
 #include "PhreeqcIOData/EquilibriumReactant.h"
 #include "PhreeqcIOData/KineticReactant.h"
@@ -45,33 +49,32 @@ std::ostream& operator<<(std::ostream& os,
 }
 }  // namespace
 
-PhreeqcIO::PhreeqcIO(std::string const project_file_name,
-                     MeshLib::Mesh const& mesh,
-                     std::string&& database,
-                     std::vector<AqueousSolution>&& aqueous_solutions,
-                     std::vector<EquilibriumReactant>&& equilibrium_reactants,
-                     std::vector<KineticReactant>&& kinetic_reactants,
-                     std::vector<ReactionRate>&& reaction_rates,
-                     std::vector<SurfaceSite>&& surface,
-                     std::unique_ptr<UserPunch>&& user_punch,
-                     std::unique_ptr<Output>&& output,
-                     std::unique_ptr<Dump>&& dump,
-                     Knobs&& knobs,
-                     std::vector<std::pair<int, std::string>> const&
-                         process_id_to_component_name_map)
+PhreeqcIO::PhreeqcIO(
+    std::string const project_file_name,
+    MeshLib::Mesh const& mesh,
+    std::string&& database,
+    std::unique_ptr<ChemicalSystem>&& chemical_system,
+    std::vector<ReactionRate>&& reaction_rates,
+    std::vector<SurfaceSite>&& surface,
+    std::unique_ptr<UserPunch>&& user_punch,
+    std::unique_ptr<Output>&& output,
+    std::unique_ptr<Dump>&& dump,
+    Knobs&& knobs,
+    MeshLib::PropertyVector<double>* porosity,
+    std::unique_ptr<MaterialPropertyLib::MaterialSpatialDistributionMap>&&
+        media_map)
     : _phreeqc_input_file(project_file_name + "_phreeqc.inp"),
       _mesh(mesh),
       _database(std::move(database)),
-      _aqueous_solutions(std::move(aqueous_solutions)),
-      _equilibrium_reactants(std::move(equilibrium_reactants)),
-      _kinetic_reactants(std::move(kinetic_reactants)),
+      _chemical_system(std::move(chemical_system)),
       _reaction_rates(std::move(reaction_rates)),
       _surface(std::move(surface)),
       _user_punch(std::move(user_punch)),
       _output(std::move(output)),
       _dump(std::move(dump)),
       _knobs(std::move(knobs)),
-      _process_id_to_component_name_map(process_id_to_component_name_map)
+      _porosity(porosity),
+      _media_map(std::move(media_map))
 {
     // initialize phreeqc instance
     if (CreateIPhreeqc() != phreeqc_instance_id)
@@ -106,27 +109,51 @@ PhreeqcIO::PhreeqcIO(std::string const project_file_name,
     }
 }
 
-void PhreeqcIO::executeInitialCalculation(
-    std::vector<GlobalVector*>& process_solutions)
+void PhreeqcIO::initialize()
 {
-    setAqueousSolutionsOrUpdateProcessSolutions(
-        process_solutions, Status::SettingAqueousSolutions);
+    num_chemical_systems = [&] {
+        std::size_t num_chemical_systems = 0;
+        for (std::size_t i = 0; i < _chemical_system_index_map.size(); ++i)
+            num_chemical_systems += _chemical_system_index_map[i].size();
+        return num_chemical_systems;
+    }();
+
+    _chemical_system->initialize(num_chemical_systems);
+}
+
+void PhreeqcIO::executeInitialCalculation(
+    std::vector<GlobalVector> const& int_pt_x)
+{
+    setAqueousSolutions(int_pt_x);
 
     writeInputsToFile();
 
     execute();
 
     readOutputsFromFile();
+}
 
-    setAqueousSolutionsOrUpdateProcessSolutions(
-        process_solutions, Status::UpdatingProcessSolutions);
+std::vector<GlobalVector> PhreeqcIO::getIntPtProcessSolutions() const
+{
+    std::vector<GlobalVector> int_pt_x;
+
+    auto const& aqueous_solution = _chemical_system->aqueous_solution;
+    int_pt_x.push_back(*aqueous_solution->pressure);
+
+    auto const& components = aqueous_solution->components;
+    std::transform(components.begin(), components.end(),
+                   std::back_inserter(int_pt_x),
+                   [](auto const& c) { return *c.amount; });
+
+    int_pt_x.push_back(*aqueous_solution->pH);
+
+    return int_pt_x;
 }
 
 void PhreeqcIO::doWaterChemistryCalculation(
-    std::vector<GlobalVector*>& process_solutions, double const dt)
+    std::vector<GlobalVector> const& int_pt_x, double const dt)
 {
-    setAqueousSolutionsOrUpdateProcessSolutions(
-        process_solutions, Status::SettingAqueousSolutions);
+    setAqueousSolutions(int_pt_x);
 
     setAqueousSolutionsPrevFromDumpFile();
 
@@ -135,88 +162,59 @@ void PhreeqcIO::doWaterChemistryCalculation(
     execute();
 
     readOutputsFromFile();
-
-    setAqueousSolutionsOrUpdateProcessSolutions(
-        process_solutions, Status::UpdatingProcessSolutions);
 }
 
-void PhreeqcIO::setAqueousSolutionsOrUpdateProcessSolutions(
-    std::vector<GlobalVector*> const& process_solutions, Status const status)
+std::vector<MeshLib::PropertyVector<double>*>
+PhreeqcIO::getReactantVolumeFractionChange(MeshLib::Mesh& mesh)
 {
-    std::size_t const num_chemical_systems = _mesh.getNumberOfBaseNodes();
+    std::vector<MeshLib::PropertyVector<double>*> reactant_volume_change;
 
-    auto const chemical_system_map =
-        *_mesh.getProperties().template getPropertyVector<std::size_t>(
-            "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
-
-    // Loop over chemical systems
-    for (std::size_t local_id = 0; local_id < num_chemical_systems; ++local_id)
+    if (!_chemical_system->kinetic_reactants.empty())
     {
-        auto const global_id = chemical_system_map[local_id];
-        // Get chemical compostion of solution in a particular chemical system
-        auto& aqueous_solution = _aqueous_solutions[local_id];
-        auto& components = aqueous_solution.components;
-        // Loop over transport process id map to retrieve component
-        // concentrations from process solutions or to update process solutions
-        // after chemical calculation by Phreeqc
-        for (auto const& process_id_to_component_name_map_element :
-             _process_id_to_component_name_map)
-        {
-            auto const& transport_process_id =
-                process_id_to_component_name_map_element.first;
-            auto const& transport_process_variable =
-                process_id_to_component_name_map_element.second;
-
-            auto& transport_process_solution =
-                process_solutions[transport_process_id];
-
-            auto component =
-                std::find_if(components.begin(), components.end(),
-                             [&transport_process_variable](Component const& c) {
-                                 return c.name == transport_process_variable;
-                             });
-
-            if (component != components.end())
-            {
-                switch (status)
-                {
-                    case Status::SettingAqueousSolutions:
-                        // Set component concentrations.
-                        component->amount =
-                            transport_process_solution->get(global_id);
-                        break;
-                    case Status::UpdatingProcessSolutions:
-                        // Update solutions of component transport processes.
-                        transport_process_solution->set(global_id,
-                                                        component->amount);
-                        break;
-                }
-            }
-
-            if (transport_process_variable == "H")
-            {
-                switch (status)
-                {
-                    case Status::SettingAqueousSolutions:
-                    {
-                        // Set pH value by hydrogen concentration.
-                        aqueous_solution.pH = -std::log10(
-                            transport_process_solution->get(global_id));
-                        break;
-                    }
-                    case Status::UpdatingProcessSolutions:
-                    {
-                        // Update hydrogen concentration by pH value.
-                        auto hydrogen_concentration =
-                            std::pow(10, -aqueous_solution.pH);
-                        transport_process_solution->set(global_id,
-                                                        hydrogen_concentration);
-                        break;
-                    }
-                }
-            }
-        }
+        auto const& kinetic_reactants = _chemical_system->kinetic_reactants;
+        std::transform(
+            kinetic_reactants.begin(), kinetic_reactants.end(),
+            std::back_inserter(reactant_volume_change), [&mesh](auto const& r) {
+                return mesh.getProperties().template getPropertyVector<double>(
+                    "volume_fraction_change_" + r.name,
+                    MeshLib::MeshItemType::IntegrationPoint, 1);
+            });
     }
+
+    if (!_chemical_system->equilibrium_reactants.empty())
+    {
+        auto const& equilibrium_reactants =
+            _chemical_system->equilibrium_reactants;
+        std::transform(
+            equilibrium_reactants.begin(),
+            equilibrium_reactants.end(),
+            std::back_inserter(reactant_volume_change),
+            [&mesh](auto const& r) {
+                return mesh.getProperties().template getPropertyVector<double>(
+                    "volume_fraction_change_" + r.name,
+                    MeshLib::MeshItemType::IntegrationPoint, 1);
+            });
+    }
+
+    return reactant_volume_change;
+}
+
+void PhreeqcIO::setAqueousSolutions(std::vector<GlobalVector> const& int_pt_x)
+{
+    // pressure
+    auto& aqueous_solution = _chemical_system->aqueous_solution;
+    *aqueous_solution->pressure = int_pt_x.front();
+
+    // components
+    auto& components = aqueous_solution->components;
+    for (unsigned component_id = 0; component_id < components.size();
+         ++component_id)
+    {
+        *components[component_id].amount = int_pt_x[component_id + 1];
+    }
+
+    // pH
+    *aqueous_solution->pH = int_pt_x.back();
 }
 
 void PhreeqcIO::setAqueousSolutionsPrevFromDumpFile()
@@ -255,7 +253,7 @@ void PhreeqcIO::writeInputsToFile(double const dt)
                   _phreeqc_input_file);
     }
 
-    out << (*this << dt);
+    print(out, dt);
 
     if (!out)
     {
@@ -266,103 +264,42 @@ void PhreeqcIO::writeInputsToFile(double const dt)
     out.close();
 }
 
-std::ostream& operator<<(std::ostream& os, PhreeqcIO const& phreeqc_io)
+void PhreeqcIO::print(std::ostream& os, double const dt)
 {
-    os << phreeqc_io._knobs << "\n";
+    os << _knobs << "\n";
 
-    os << *phreeqc_io._output << "\n";
+    os << *_output << "\n";
 
-    auto const& user_punch = phreeqc_io._user_punch;
-    if (user_punch)
+    if (_user_punch)
     {
-        os << *user_punch << "\n";
+        os << *_user_punch << "\n";
     }
 
-    auto const& reaction_rates = phreeqc_io._reaction_rates;
-    if (!reaction_rates.empty())
+    if (!_reaction_rates.empty())
     {
         os << "RATES" << "\n";
-        os << reaction_rates << "\n";
+        os << _reaction_rates << "\n";
     }
 
-    std::size_t const num_chemical_systems =
-        phreeqc_io._mesh.getNumberOfBaseNodes();
-
-    auto const chemical_system_map =
-        *phreeqc_io._mesh.getProperties()
-             .template getPropertyVector<std::size_t>(
-                 "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
-
-    for (std::size_t local_id = 0; local_id < num_chemical_systems; ++local_id)
+    for (std::size_t mesh_item_id = 0;
+         mesh_item_id < _chemical_system_index_map.size();
+         ++mesh_item_id)
     {
-        auto const global_id = chemical_system_map[local_id];
-        auto const& aqueous_solution =
-            phreeqc_io._aqueous_solutions[local_id];
-        os << "SOLUTION " << global_id + 1 << "\n";
-        os << aqueous_solution << "\n";
-
-        auto const& dump = phreeqc_io._dump;
-        if (dump)
+        auto const& local_chemical_system =
+            _chemical_system_index_map[mesh_item_id];
+        for (std::size_t ip = 0; ip < local_chemical_system.size(); ++ip)
         {
-            auto const& aqueous_solutions_prev = dump->aqueous_solutions_prev;
-            if (!aqueous_solutions_prev.empty())
-            {
-                os << aqueous_solutions_prev[local_id] << "\n\n";
-            }
+            auto const& chemical_system_id = local_chemical_system[ip];
+            _chemical_system->print(mesh_item_id, chemical_system_id, os, dt,
+                                    *_media_map,
+                                    (*_porosity)[chemical_system_id]);
         }
-
-        os << "USE solution none" << "\n";
-        os << "END" << "\n\n";
-
-        os << "USE solution " << global_id + 1 << "\n\n";
-
-        auto const& equilibrium_reactants = phreeqc_io._equilibrium_reactants;
-        if (!equilibrium_reactants.empty())
-        {
-            os << "EQUILIBRIUM_PHASES " << global_id + 1 << "\n";
-            for (auto const& equilibrium_reactant : equilibrium_reactants)
-            {
-                equilibrium_reactant.print(os, global_id);
-            }
-            os << "\n";
-        }
-
-        auto const& kinetic_reactants = phreeqc_io._kinetic_reactants;
-        if (!kinetic_reactants.empty())
-        {
-            os << "KINETICS " << global_id + 1 << "\n";
-            for (auto const& kinetic_reactant : kinetic_reactants)
-            {
-                kinetic_reactant.print(os, global_id);
-            }
-            os << "-steps " << phreeqc_io._dt << "\n" << "\n";
-        }
-
-        auto const& surface = phreeqc_io._surface;
-        if (!surface.empty())
-        {
-            os << "SURFACE " << global_id + 1 << "\n";
-            std::size_t aqueous_solution_id =
-                dump->aqueous_solutions_prev.empty()
-                    ? global_id + 1
-                    : num_chemical_systems + global_id + 1;
-            os << "-equilibrate with solution " << aqueous_solution_id << "\n";
-            os << "-sites_units DENSITY"
-               << "\n";
-            os << surface << "\n";
-            os << "SAVE solution " << global_id + 1 << "\n";
-        }
-
-        os << "END" << "\n\n";
     }
 
-    auto const& dump = phreeqc_io._dump;
-    if (dump)
+    if (_dump)
     {
-        dump->print(os, num_chemical_systems);
+        //        dump->print(os, num_chemical_systems);
     }
-
-    return os;
 }
 
 void PhreeqcIO::execute()
@@ -391,7 +328,7 @@ void PhreeqcIO::readOutputsFromFile()
                   phreeqc_result_file);
     }
 
-    in >> *this;
+    read(in);
 
     if (!in)
     {
@@ -402,165 +339,210 @@ void PhreeqcIO::readOutputsFromFile()
     in.close();
 }
 
-std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io)
+void PhreeqcIO::read(std::istream& in)
 {
     // Skip the headline
     in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     std::string line;
-    auto const& output = *phreeqc_io._output;
-    auto const& dropped_item_ids = output.dropped_item_ids;
+    auto const& dropped_item_ids = _output->dropped_item_ids;
 
-    auto const& surface = phreeqc_io._surface;
-    int const num_skipped_lines = surface.empty() ? 1 : 2;
+    int const num_skipped_lines = _surface.empty() ? 1 : 2;
 
-    std::size_t const num_chemical_systems =
-        phreeqc_io._mesh.getNumberOfBaseNodes();
-
-    auto const chemical_system_map =
-        *phreeqc_io._mesh.getProperties()
-             .template getPropertyVector<std::size_t>(
-                 "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
-
-    for (std::size_t local_id = 0; local_id < num_chemical_systems; ++local_id)
+    for (std::size_t mesh_item_id = 0;
+         mesh_item_id < _chemical_system_index_map.size();
+         ++mesh_item_id)
     {
-        auto const global_id = chemical_system_map[local_id];
-        // Skip equilibrium calculation result of initial solution
-        for (int i = 0; i < num_skipped_lines; ++i)
+        auto const& local_chemical_system =
+            _chemical_system_index_map[mesh_item_id];
+        for (std::size_t ip = 0; ip < local_chemical_system.size(); ++ip)
         {
-            in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        }
+            auto const& chemical_system_id = local_chemical_system[ip];
 
-        // Get calculation result of the solution after the reaction
-        if (!std::getline(in, line))
-        {
-            OGS_FATAL(
-                "Error when reading calculation result of Solution {:d} after "
-                "the reaction.",
-                global_id);
-        }
-
-        std::vector<double> accepted_items;
-        std::vector<std::string> items;
-        boost::trim_if(line, boost::is_any_of("\t "));
-        boost::algorithm::split(items, line, boost::is_any_of("\t "),
-                                boost::token_compress_on);
-        for (int item_id = 0; item_id < static_cast<int>(items.size());
-             ++item_id)
-        {
-            if (std::find(dropped_item_ids.begin(), dropped_item_ids.end(),
-                          item_id) == dropped_item_ids.end())
+            // Skip equilibrium calculation result of initial solution
+            for (int i = 0; i < num_skipped_lines; ++i)
             {
-                double value;
-                try
-                {
-                    value = std::stod(items[item_id]);
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    OGS_FATAL(
-                        "Invalid argument. Could not convert string '{:s}' to "
-                        "double for chemical system {:d}, column {:d}. "
-                        "Exception "
-                        "'{:s}' was thrown.",
-                        items[item_id], global_id, item_id, e.what());
-                }
-                catch (const std::out_of_range& e)
-                {
-                    OGS_FATAL(
-                        "Out of range error. Could not convert string '{:s}' "
-                        "to "
-                        "double for chemical system {:d}, column {:d}. "
-                        "Exception "
-                        "'{:s}' was thrown.",
-                        items[item_id], global_id, item_id, e.what());
-                }
-                accepted_items.push_back(value);
+                in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             }
-        }
-        assert(accepted_items.size() == output.accepted_items.size());
 
-        auto& aqueous_solution =
-            phreeqc_io._aqueous_solutions[local_id];
-        auto& components = aqueous_solution.components;
-        auto& equilibrium_reactants = phreeqc_io._equilibrium_reactants;
-        auto& kinetic_reactants = phreeqc_io._kinetic_reactants;
-        auto& user_punch = phreeqc_io._user_punch;
-        for (int item_id = 0; item_id < static_cast<int>(accepted_items.size());
-             ++item_id)
-        {
-            auto const& accepted_item = output.accepted_items[item_id];
-            auto const& item_name = accepted_item.name;
-
-            auto compare_by_name = [&item_name](auto const& item) {
-                return item.name == item_name;
-            };
-
-            switch (accepted_item.item_type)
+            // Get calculation result of the solution after the reaction
+            if (!std::getline(in, line))
             {
-                case ItemType::pH:
+                OGS_FATAL(
+                    "Error when reading calculation result of Solution {:d} "
+                    "after the reaction.",
+                    chemical_system_id + 1);
+            }
+
+            std::vector<double> accepted_items;
+            std::vector<std::string> items;
+            boost::trim_if(line, boost::is_any_of("\t "));
+            boost::algorithm::split(items, line, boost::is_any_of("\t "),
+                                    boost::token_compress_on);
+            for (int item_id = 0; item_id < static_cast<int>(items.size());
+                 ++item_id)
+            {
+                if (std::find(dropped_item_ids.begin(), dropped_item_ids.end(),
+                              item_id) == dropped_item_ids.end())
                 {
-                    // Update pH value
-                    aqueous_solution.pH = accepted_items[item_id];
-                    break;
+                    double value;
+                    try
+                    {
+                        value = std::stod(items[item_id]);
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        OGS_FATAL(
+                            "Invalid argument. Could not convert string '{:s}' "
+                            "to "
+                            "double for chemical system {:d}, column {:d}. "
+                            "Exception "
+                            "'{:s}' was thrown.",
+                            items[item_id], chemical_system_id + 1, item_id,
+                            e.what());
+                    }
+                    catch (const std::out_of_range& e)
+                    {
+                        OGS_FATAL(
+                            "Out of range error. Could not convert string "
+                            "'{:s}' "
+                            "to "
+                            "double for chemical system {:d}, column {:d}. "
+                            "Exception "
+                            "'{:s}' was thrown.",
+                            items[item_id], chemical_system_id + 1, item_id,
+                            e.what());
+                    }
+                    accepted_items.push_back(value);
                 }
-                case ItemType::pe:
+            }
+            assert(accepted_items.size() == _output->accepted_items.size());
+
+            ParameterLib::SpatialPosition pos;
+            MaterialPropertyLib::VariableArray vars;
+
+            auto const& medium = *_media_map->getMedium(mesh_item_id);
+            auto const& phase = medium.phase("AqueousLiquid");
+
+            auto const density =
+                phase.property(MaterialPropertyLib::PropertyType::density)
+                    .template value<double>(vars, pos, 0, 0);
+
+            for (int item_id = 0;
+                 item_id < static_cast<int>(accepted_items.size());
+                 ++item_id)
+            {
+                auto const& accepted_item = _output->accepted_items[item_id];
+                auto const& item_name = accepted_item.name;
+
+                auto compare_by_name = [&item_name](auto const& item) {
+                    return item.name == item_name;
+                };
+
+                switch (accepted_item.item_type)
                 {
-                    // Update pe value
-                    aqueous_solution.pe = accepted_items[item_id];
-                    break;
-                }
-                case ItemType::Component:
-                {
-                    // Update component concentrations
-                    auto& component = BaseLib::findElementOrError(
-                        components.begin(), components.end(), compare_by_name,
-                        "Could not find component '" + item_name + "'.");
-                    component.amount = accepted_items[item_id];
-                    break;
-                }
-                case ItemType::EquilibriumReactant:
-                {
-                    // Update amounts of equilibrium reactant
-                    auto& equilibrium_reactant = BaseLib::findElementOrError(
-                        equilibrium_reactants.begin(),
-                        equilibrium_reactants.end(), compare_by_name,
-                        "Could not find equilibrium reactant '" + item_name +
-                            "'.");
-                    (*equilibrium_reactant.amount)[global_id] =
-                        accepted_items[item_id];
-                    break;
-                }
-                case ItemType::KineticReactant:
-                {
-                    // Update amounts of kinetic reactants
-                    auto& kinetic_reactant = BaseLib::findElementOrError(
-                        kinetic_reactants.begin(), kinetic_reactants.end(),
-                        compare_by_name,
-                        "Could not find kinetic reactant '" + item_name + "'.");
-                    (*kinetic_reactant.amount)[global_id] =
-                        accepted_items[item_id];
-                    break;
-                }
-                case ItemType::SecondaryVariable:
-                {
-                    assert(user_punch);
-                    auto& secondary_variables = user_punch->secondary_variables;
-                    // Update values of secondary variables
-                    auto& secondary_variable = BaseLib::findElementOrError(
-                        secondary_variables.begin(), secondary_variables.end(),
-                        compare_by_name,
-                        "Could not find secondary variable '" + item_name +
-                            "'.");
-                    (*secondary_variable.value)[global_id] =
-                        accepted_items[item_id];
-                    break;
+                    case ItemType::pH:
+                    {
+                        // Update pH value
+                        (*_chemical_system->aqueous_solution
+                              ->pH)[chemical_system_id] =
+                            std::pow(10, -accepted_items[item_id]);
+                        break;
+                    }
+                    case ItemType::pe:
+                    {
+                        // Update pe value
+                        //                    (*aqueous_solution.pe)[chemical_system_id]
+                        //                    =
+                        //                        accepted_items[item_id];
+                        break;
+                    }
+                    case ItemType::Component:
+                    {
+                        // Update component concentrations
+                        auto& component = BaseLib::findElementOrError(
+                            _chemical_system->aqueous_solution->components
+                                .begin(),
+                            _chemical_system->aqueous_solution->components
+                                .end(),
+                            compare_by_name,
+                            "Could not find component '" + item_name + "'.");
+                        component.amount->set(
+                            chemical_system_id,
+                            accepted_items[item_id] * density);
+                        break;
+                    }
+                    case ItemType::EquilibriumReactant:
+                    {
+                        // Update amounts of equilibrium reactant
+                        auto& equilibrium_reactant =
+                            BaseLib::findElementOrError(
+                                _chemical_system->equilibrium_reactants.begin(),
+                                _chemical_system->equilibrium_reactants.end(),
+                                compare_by_name,
+                                "Could not find equilibrium reactant '" +
+                                    item_name + "'.");
+                        // TODO: unit conversion
+                        (*equilibrium_reactant.mass)[chemical_system_id] +=
+                            accepted_items[item_id];
+                        (*equilibrium_reactant.mass_loss)[chemical_system_id] =
+                            accepted_items[item_id];
+                        break;
+                    }
+                    case ItemType::KineticReactant:
+                    {
+                        // Update amounts of kinetic reactants
+                        auto& kinetic_reactant = BaseLib::findElementOrError(
+                            _chemical_system->kinetic_reactants.begin(),
+                            _chemical_system->kinetic_reactants.end(),
+                            compare_by_name,
+                            "Could not find kinetic reactant '" + item_name +
+                                "'.");
+                        (*kinetic_reactant
+                              .volume_fraction)[chemical_system_id] +=
+                            accepted_items[item_id] *
+                            kinetic_reactant.molar_volume *
+                            (*_porosity)[chemical_system_id] * density;
+                        (*kinetic_reactant
+                              .volume_fraction_change)[chemical_system_id] =
+                            accepted_items[item_id] *
+                            kinetic_reactant.molar_volume *
+                            (*_porosity)[chemical_system_id] * density;
+                        break;
+                    }
+                    case ItemType::SecondaryVariable:
+                    {
+                        assert(_user_punch);
+                        // Update values of secondary variables
+                        auto& secondary_variable = BaseLib::findElementOrError(
+                            _user_punch->secondary_variables.begin(),
+                            _user_punch->secondary_variables.end(),
+                            compare_by_name,
+                            "Could not find secondary variable '" + item_name +
+                                "'.");
+                        //                    (*secondary_variable.value)[global_id]
+                        //                    =
+                        //                            accepted_items[item_id];
+                        break;
+                    }
                 }
             }
         }
     }
+}
 
-    return in;
+std::vector<std::string> PhreeqcIO::getComponentList() const
+{
+    std::vector<std::string> component_names;
+    auto const& aqueous_solution = _chemical_system->aqueous_solution;
+    auto const& components = aqueous_solution->components;
+    std::transform(components.begin(), components.end(),
+                   std::back_inserter(component_names),
+                   [](auto const& c) { return c.name; });
+
+    component_names.push_back("H");
+
+    return component_names;
 }
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

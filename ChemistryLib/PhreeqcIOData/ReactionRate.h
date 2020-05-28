@@ -20,7 +20,7 @@ namespace PhreeqcIOData
 {
 struct ReactionRate
 {
-    ReactionRate(std::string kinetic_reactant_,
+    ReactionRate(std::string&& kinetic_reactant_,
                  std::vector<std::string>&& expression_statements_)
         : kinetic_reactant(std::move(kinetic_reactant_)),
           expression_statements(std::move(expression_statements_))

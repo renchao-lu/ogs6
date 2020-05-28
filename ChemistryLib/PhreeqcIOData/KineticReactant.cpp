@@ -17,7 +17,9 @@ namespace ChemistryLib
 namespace PhreeqcIOData
 {
 void KineticReactant::print(std::ostream& os,
-                            std::size_t const global_id) const
+                            std::size_t const chemical_system_id,
+                            double const porosity,
+                            double const density) const
 {
     os << name << "\n";
 
@@ -26,7 +28,16 @@ void KineticReactant::print(std::ostream& os,
         os << "-formula " << chemical_formula << "\n";
     }
 
-    os << "-m  " << (*amount)[global_id] << "\n";
+    // kinetic reactant
+    // volume [m3]: volume_fraction * total_volume
+    // mass [mol]: volume_fraction * total_volume / molar_volume
+    // after the water mass [kg] is scaled from porosity * total_volume * rho to
+    // 1, i.e., scaling factor [-]: 1 / (porosity * total_volume * rho) kinetic
+    // reactant mass after scaling [mol]: volume_fraction / molar_volume /
+    // porosity / rho
+    auto const mass = (*volume_fraction)[chemical_system_id] / molar_volume /
+                      porosity / density;
+    os << "-m  " << mass << "\n";
 
     if (!parameters.empty())
     {

@@ -16,6 +16,7 @@
 #include "ChemicalSolverInterface.h"
 #include "PhreeqcKernelData/EquilibriumReactants.h"
 #include "PhreeqcKernelData/KineticReactant.h"
+#include "ProcessLib/Process.h"
 
 #include <iphreeqc/src/src/phreeqcpp/Phreeqc.h>
 
@@ -32,21 +33,21 @@ class ReactionRate;
 class PhreeqcKernel final : public ChemicalSolverInterface, private Phreeqc
 {
 public:
-    PhreeqcKernel(std::size_t const num_chemical_systems,
-                  std::vector<std::pair<int, std::string>> const&
-                      process_id_to_component_name_map,
-                  std::string const& database,
-                  AqueousSolution aqueous_solution,
-                  std::unique_ptr<EquilibriumReactants>&& equilibrium_reactants,
-                  std::unique_ptr<Kinetics>&& kinetic_reactants,
-                  std::vector<ReactionRate>&& reaction_rates);
+    PhreeqcKernel(
+        std::size_t const num_chemical_systems,
+        //                  std::vector<std::pair<int, std::string>> const&
+        //                      process_id_to_component_name_map,
+        std::string const& database,
+        AqueousSolution aqueous_solution,
+        std::unique_ptr<EquilibriumReactants>&& equilibrium_reactants,
+        std::unique_ptr<Kinetics>&& kinetic_reactants,
+        std::vector<ReactionRate>&& reaction_rates);
 
     void executeInitialCalculation(
-        std::vector<GlobalVector*>& process_solutions) override;
+        std::vector<GlobalVector> const& int_pt_x) override;
 
-    void doWaterChemistryCalculation(
-        std::vector<GlobalVector*>& process_solutions,
-        double const dt) override;
+    void doWaterChemistryCalculation(std::vector<GlobalVector> const& int_pt_x,
+                                     double const dt) override;
 
     void setAqueousSolutions(
         std::vector<GlobalVector*> const& process_solutions);
@@ -56,6 +57,11 @@ public:
     void updateNodalProcessSolutions(
         std::vector<GlobalVector*> const& process_solutions,
         std::size_t const node_id);
+
+    std::vector<std::vector<GlobalIndexType>>& getChemicalSystemIndexMap()
+    {
+        return _chemical_system_index_map;
+    }
 
 private:
     void initializePhreeqcGeneralSettings() { do_initialize(); }
@@ -87,6 +93,7 @@ private:
     std::unique_ptr<cxxISolution const> _initial_aqueous_solution;
     std::unique_ptr<cxxSolution const> _aqueous_solution;
     std::vector<ReactionRate> const _reaction_rates;
+    std::vector<std::vector<GlobalIndexType>> _chemical_system_index_map;
 };
 }  // namespace PhreeqcKernelData
 }  // namespace ChemistryLib

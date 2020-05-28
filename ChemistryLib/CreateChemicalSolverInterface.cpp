@@ -14,13 +14,15 @@
 
 #include "BaseLib/ConfigTree.h"
 #include "BaseLib/FileTools.h"
-#include "Common/CreateReactionRate.h"
+#include "MaterialLib/MPL/CreateMaterialSpatialDistributionMap.h"
+#include "MaterialLib/MPL/MaterialSpatialDistributionMap.h"
 #include "MeshLib/Mesh.h"
+
+#include "Common/CreateReactionRate.h"
+
 #include "PhreeqcIO.h"
-#include "PhreeqcIOData/AqueousSolution.h"
-#include "PhreeqcIOData/CreateAqueousSolution.h"
-#include "PhreeqcIOData/CreateEquilibriumReactants.h"
-#include "PhreeqcIOData/CreateKineticReactant.h"
+#include "PhreeqcIOData/ChemicalSystem.h"
+#include "PhreeqcIOData/CreateChemicalSystem.h"
 #include "PhreeqcIOData/CreateKnobs.h"
 #include "PhreeqcIOData/CreateOutput.h"
 #include "PhreeqcIOData/CreateSurface.h"
@@ -32,6 +34,7 @@
 #include "PhreeqcIOData/ReactionRate.h"
 #include "PhreeqcIOData/Surface.h"
 #include "PhreeqcIOData/UserPunch.h"
+
 #include "PhreeqcKernel.h"
 #include "PhreeqcKernelData/AqueousSolution.h"
 #include "PhreeqcKernelData/CreateAqueousSolution.h"
@@ -64,12 +67,11 @@ std::string parseDatabasePath(BaseLib::ConfigTree const& config)
 namespace ChemistryLib
 {
 template <>
-std::unique_ptr<ChemicalSolverInterface>
+std::shared_ptr<ChemicalSolverInterface>
 createChemicalSolverInterface<ChemicalSolver::Phreeqc>(
     std::vector<std::unique_ptr<MeshLib::Mesh>> const& meshes,
-    std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map,
-    BaseLib::ConfigTree const& config, std::string const& output_directory)
+    BaseLib::ConfigTree const& config, std::string const& output_directory,
+    std::map<int, std::shared_ptr<MaterialPropertyLib::Medium>> const& media)
 {
     auto mesh_name =
         //! \ogs_file_param{prj__chemical_system__mesh}
@@ -89,32 +91,14 @@ createChemicalSolverInterface<ChemicalSolver::Phreeqc>(
 
     auto path_to_database = parseDatabasePath(config);
 
-    // solution
-    auto aqueous_solution = PhreeqcIOData::createAqueousSolution(
-        //! \ogs_file_param{prj__chemical_system__solution}
-        config.getConfigSubtree("solution"),
-        process_id_to_component_name_map);
-
-    // kinetic reactants
-    auto chemical_system_map =
-        *mesh.getProperties().template getPropertyVector<std::size_t>(
-            "bulk_node_ids", MeshLib::MeshItemType::Node, 1);
-
-    auto kinetic_reactants = PhreeqcIOData::createKineticReactants(
-        //! \ogs_file_param{prj__chemical_system__kinetic_reactants}
-        config.getConfigSubtreeOptional("kinetic_reactants"), *meshes[0],
-        chemical_system_map);
+    // chemical system
+    auto chemical_system =
+        PhreeqcIOData::createChemicalSystem(config, *meshes[0]);
 
     // rates
     auto reaction_rates = createReactionRates<PhreeqcIOData::ReactionRate>(
         //! \ogs_file_param{prj__chemical_system__rates}
         config.getConfigSubtreeOptional("rates"));
-
-    // equilibrium reactants
-    auto equilibrium_reactants = PhreeqcIOData::createEquilibriumReactants(
-        //! \ogs_file_param{prj__chemical_system__equilibrium_reactants}
-        config.getConfigSubtreeOptional("equilibrium_reactants"), *meshes[0],
-        chemical_system_map);
 
     // surface
     auto surface = PhreeqcIOData::createSurface(
@@ -141,34 +125,40 @@ createChemicalSolverInterface<ChemicalSolver::Phreeqc>(
         config.getConfigSubtreeOptional("user_punch"), *meshes[0]);
 
     // output
-    auto const& components = aqueous_solution.components;
     auto const use_high_precision =
         //! \ogs_file_param{prj__chemical_system__use_high_precision}
         config.getConfigParameter<bool>("use_high_precision", true);
     auto output = PhreeqcIOData::createOutput(
-        components, equilibrium_reactants, kinetic_reactants, user_punch,
-        use_high_precision, project_file_name);
+        chemical_system->aqueous_solution->components,
+        chemical_system->equilibrium_reactants,
+        chemical_system->kinetic_reactants, user_punch, use_high_precision,
+        project_file_name);
 
-    auto const num_chemical_systems = mesh.getNumberOfBaseNodes();
-    std::vector<PhreeqcIOData::AqueousSolution> aqueous_solutions(
-        num_chemical_systems, aqueous_solution);
+    auto porosity = MeshLib::getOrCreateMeshProperty<double>(
+        const_cast<MeshLib::Mesh&>(*meshes[0]),
+        "porosity",
+        MeshLib::MeshItemType::IntegrationPoint,
+        1);
 
-    return std::make_unique<PhreeqcIOData::PhreeqcIO>(
+    auto media_map =
+        MaterialPropertyLib::createMaterialSpatialDistributionMap(media, mesh);
+
+    return std::make_shared<PhreeqcIOData::PhreeqcIO>(
         std::move(project_file_name), *meshes[mesh.getID()],
-        std::move(path_to_database), std::move(aqueous_solutions),
-        std::move(equilibrium_reactants), std::move(kinetic_reactants),
+        std::move(path_to_database), std::move(chemical_system),
         std::move(reaction_rates), std::move(surface), std::move(user_punch),
-        std::move(output), std::move(dump), std::move(knobs),
-        process_id_to_component_name_map);
+        std::move(output), std::move(dump), std::move(knobs), porosity,
+        std::move(media_map));
 }
 
 template <>
-std::unique_ptr<ChemicalSolverInterface>
+std::shared_ptr<ChemicalSolverInterface>
 createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
     std::vector<std::unique_ptr<MeshLib::Mesh>> const& meshes,
-    std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map,
-    BaseLib::ConfigTree const& config, std::string const& /*output_directory*/)
+    //    std::vector<std::pair<int, std::string>> const&
+    //        process_id_to_component_name_map,
+    BaseLib::ConfigTree const& config, std::string const& /*output_directory*/,
+    std::map<int, std::shared_ptr<MaterialPropertyLib::Medium>> const& media)
 {
     auto mesh = *meshes[0];
     auto path_to_database = parseDatabasePath(config);
@@ -176,8 +166,8 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
     // solution
     auto aqueous_solution = PhreeqcKernelData::createAqueousSolution(
         //! \ogs_file_param{prj__chemical_system__solution}
-        config.getConfigSubtree("solution"),
-        process_id_to_component_name_map);
+        config.getConfigSubtree("solution")/*,
+        process_id_to_component_name_map*/);
 
     // kinetic reactants
     auto kinetic_reactants = PhreeqcKernelData::createKineticReactants(
@@ -194,8 +184,8 @@ createChemicalSolverInterface<ChemicalSolver::PhreeqcKernel>(
         //! \ogs_file_param{prj__chemical_system__equilibrium_reactants}
         config.getConfigSubtreeOptional("equilibrium_reactants"), mesh);
 
-    return std::make_unique<PhreeqcKernelData::PhreeqcKernel>(
-        mesh.getNumberOfBaseNodes(), process_id_to_component_name_map,
+    return std::make_shared<PhreeqcKernelData::PhreeqcKernel>(
+        mesh.getNumberOfBaseNodes(), /* process_id_to_component_name_map,*/
         std::move(path_to_database), std::move(aqueous_solution),
         std::move(equilibrium_reactants), std::move(kinetic_reactants),
         std::move(reaction_rates));

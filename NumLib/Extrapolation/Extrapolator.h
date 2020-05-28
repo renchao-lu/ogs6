@@ -33,6 +33,13 @@ public:
         std::vector<GlobalVector*> const& x,
         std::vector<NumLib::LocalToGlobalIndexMap const*> const& dof_table) = 0;
 
+    virtual void extrapolate(
+        const unsigned num_components,
+        ExtrapolatableElementCollection const& extrapolatables,
+        GlobalVector const& int_pt_x,
+        std::vector<std::vector<GlobalIndexType>>&
+            chemical_system_index_map) = 0;
+
     /*! Computes residuals from the extrapolation of the given \c property.
      *
      * The residuals are computed as element values.

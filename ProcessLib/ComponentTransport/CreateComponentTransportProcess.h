@@ -18,6 +18,10 @@ namespace MaterialPropertyLib
 class Medium;
 }
 
+namespace ChemistryLib
+{
+class ChemicalSolverInterface;
+}
 namespace ProcessLib
 {
 namespace ComponentTransport
@@ -32,7 +36,8 @@ std::unique_ptr<Process> createComponentTransportProcess(
     BaseLib::ConfigTree const& config,
     std::vector<std::unique_ptr<MeshLib::Mesh>> const& meshes,
     std::string const& output_directory,
-    std::map<int, std::shared_ptr<MaterialPropertyLib::Medium>> const& media);
-
+    std::map<int, std::shared_ptr<MaterialPropertyLib::Medium>> const& media,
+    std::shared_ptr<ChemistryLib::ChemicalSolverInterface> const&
+        chemical_solver_interface);
 }  // namespace ComponentTransport
 }  // namespace ProcessLib

@@ -21,8 +21,7 @@ namespace PhreeqcIOData
 {
 std::vector<EquilibriumReactant> createEquilibriumReactants(
     boost::optional<BaseLib::ConfigTree> const& config,
-    MeshLib::Mesh const& mesh,
-    MeshLib::PropertyVector<std::size_t> const& chemical_system_map)
+    MeshLib::Mesh const& mesh)
 {
     if (!config)
     {
@@ -39,34 +38,30 @@ std::vector<EquilibriumReactant> createEquilibriumReactants(
             //! \ogs_file_param{prj__chemical_system__equilibrium_reactants__phase_component__name}
             equilibrium_reactant_config.getConfigParameter<std::string>("name");
 
-        double const initial_amount =
+        double const initial_mass =
             //! \ogs_file_param{prj__chemical_system__equilibrium_reactants__phase_component__initial_amount}
             equilibrium_reactant_config.getConfigParameter<double>(
                 "initial_amount");
+
+        auto mass = MeshLib::getOrCreateMeshProperty<double>(
+            const_cast<MeshLib::Mesh&>(mesh),
+            name,
+            MeshLib::MeshItemType::IntegrationPoint,
+            1);
+
+        auto mass_loss = MeshLib::getOrCreateMeshProperty<double>(
+            const_cast<MeshLib::Mesh&>(mesh),
+            "mass_loss_" + name,
+            MeshLib::MeshItemType::IntegrationPoint,
+            1);
 
         double const saturation_index =
             //! \ogs_file_param{prj__chemical_system__equilibrium_reactants__phase_component__saturation_index}
             equilibrium_reactant_config.getConfigParameter<double>(
                 "saturation_index");
 
-        auto amount = MeshLib::getOrCreateMeshProperty<double>(
-            const_cast<MeshLib::Mesh&>(mesh),
-            name,
-            MeshLib::MeshItemType::Node,
-            1);
-
-        std::fill(std::begin(*amount),
-                  std::end(*amount),
-                  std::numeric_limits<double>::quiet_NaN());
-
-        std::for_each(chemical_system_map.begin(),
-                      chemical_system_map.end(),
-                      [&amount, initial_amount](auto const& global_id) {
-                          (*amount)[global_id] = initial_amount;
-                      });
-
         equilibrium_reactants.emplace_back(
-            std::move(name), amount, saturation_index);
+            std::move(name), initial_mass, mass, mass_loss, saturation_index);
     }
 
     return equilibrium_reactants;

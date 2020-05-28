@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include <memory>
-
 #include "ChemicalSolverInterface.h"
 #include "PhreeqcIOData/Knobs.h"
 
@@ -20,12 +18,16 @@ namespace MeshLib
 class Mesh;
 }
 
+namespace MaterialPropertyLib
+{
+class MaterialSpatialDistributionMap;
+}
+
 namespace ChemistryLib
 {
 namespace PhreeqcIOData
 {
-struct AqueousSolution;
-struct EquilibriumReactant;
+struct ChemicalSystem;
 struct KineticReactant;
 struct ReactionRate;
 struct Output;
@@ -33,40 +35,34 @@ struct SurfaceSite;
 struct Dump;
 struct UserPunch;
 
-enum class Status
-{
-    SettingAqueousSolutions,
-    UpdatingProcessSolutions
-};
-
 class PhreeqcIO final : public ChemicalSolverInterface
 {
 public:
-    PhreeqcIO(std::string const project_file_name,
-              MeshLib::Mesh const& mesh,
-              std::string&& database,
-              std::vector<AqueousSolution>&& aqueous_solutions,
-              std::vector<EquilibriumReactant>&& equilibrium_reactants,
-              std::vector<KineticReactant>&& kinetic_reactants,
-              std::vector<ReactionRate>&& reaction_rates,
-              std::vector<SurfaceSite>&& surface,
-              std::unique_ptr<UserPunch>&& user_punch,
-              std::unique_ptr<Output>&& output,
-              std::unique_ptr<Dump>&& dump,
-              Knobs&& knobs,
-              std::vector<std::pair<int, std::string>> const&
-                  process_id_to_component_name_map);
+    PhreeqcIO(
+        std::string const project_file_name,
+        MeshLib::Mesh const& mesh,
+        std::string&& database,
+        std::unique_ptr<ChemicalSystem>&& chemical_system,
+        std::vector<ReactionRate>&& reaction_rates,
+        std::vector<SurfaceSite>&& surface,
+        std::unique_ptr<UserPunch>&& user_punch,
+        std::unique_ptr<Output>&& output,
+        std::unique_ptr<Dump>&& dump,
+        Knobs&& knobs,
+        MeshLib::PropertyVector<double>* porosity,
+        std::unique_ptr<MaterialPropertyLib::MaterialSpatialDistributionMap>&&
+            media_map);
+
+    void initialize() override;
 
     void executeInitialCalculation(
-        std::vector<GlobalVector*>& process_solutions) override;
+        std::vector<GlobalVector> const& int_pt_x) override;
 
-    void doWaterChemistryCalculation(
-        std::vector<GlobalVector*>& process_solutions,
-        double const dt) override;
+    void doWaterChemistryCalculation(std::vector<GlobalVector> const& int_pt_x,
+                                     double const dt) override;
 
-    void setAqueousSolutionsOrUpdateProcessSolutions(
-        std::vector<GlobalVector*> const& process_solutions,
-        Status const status);
+    void setAqueousSolutions(
+        std::vector<GlobalVector> const& ip_transport_solutions);
 
     void writeInputsToFile(double const dt = 0);
 
@@ -74,37 +70,50 @@ public:
 
     void readOutputsFromFile();
 
-    friend std::ostream& operator<<(std::ostream& os,
-                                    PhreeqcIO const& phreeqc_io);
+    std::vector<GlobalVector> getIntPtProcessSolutions() const override;
+
+    std::vector<MeshLib::PropertyVector<double>*>
+    getReactantVolumeFractionChange(MeshLib::Mesh& mesh) override;
+
+    MeshLib::PropertyVector<double>* getPorosity() override
+    {
+        return _porosity;
+    }
+
+    std::vector<std::string> getComponentList() const;
+
+    std::vector<std::vector<GlobalIndexType>>& getChemicalSystemIndexMap()
+    {
+        return _chemical_system_index_map;
+    }
 
     friend std::istream& operator>>(std::istream& in, PhreeqcIO& phreeqc_io);
 
     std::string const _phreeqc_input_file;
 
 private:
-    PhreeqcIO& operator<<(double const dt)
-    {
-        _dt = dt;
-        return *this;
-    }
+    void print(std::ostream& os, double const dt);
+
+    void read(std::istream& in);
 
     void setAqueousSolutionsPrevFromDumpFile();
 
     MeshLib::Mesh const& _mesh;
     std::string const _database;
-    std::vector<AqueousSolution> _aqueous_solutions;
-    std::vector<EquilibriumReactant> _equilibrium_reactants;
-    std::vector<KineticReactant> _kinetic_reactants;
+    std::unique_ptr<ChemicalSystem> _chemical_system;
     std::vector<ReactionRate> const _reaction_rates;
     std::vector<SurfaceSite> const _surface;
     std::unique_ptr<UserPunch> _user_punch;
     std::unique_ptr<Output> const _output;
     std::unique_ptr<Dump> const _dump;
     Knobs const _knobs;
-    std::vector<std::pair<int, std::string>> const&
-        _process_id_to_component_name_map;
-    double _dt = std::numeric_limits<double>::quiet_NaN();
+    MeshLib::PropertyVector<double>* _porosity;
+    std::unique_ptr<MaterialPropertyLib::MaterialSpatialDistributionMap>
+        _media_map;
     const int phreeqc_instance_id = 0;
+    std::vector<std::vector<GlobalIndexType>> _chemical_system_index_map;
+    std::size_t num_chemical_systems =
+        std::numeric_limits<std::size_t>::quiet_NaN();
 };
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

@@ -42,7 +42,7 @@ std::unique_ptr<Output> createOutput(
                    std::back_inserter(accepted_items), accepted_item);
     for (auto const& kinetic_reactant : kinetic_reactants)
     {
-        if (kinetic_reactant.fix_amount)
+        if (kinetic_reactant.fix_mass)
         {
             continue;
         }
@@ -67,19 +67,18 @@ std::unique_ptr<Output> createOutput(
     std::vector<int> dropped_item_ids(num_dropped_basic_items);
     std::iota(dropped_item_ids.begin(), dropped_item_ids.end(), 0);
 
-    auto const num_dvalue_equilibrium_reactants = equilibrium_reactants.size();
-    auto const num_dvalue_kinetic_reactants = kinetic_reactants.size();
-    int const num_dvalue_items =
-        num_dvalue_equilibrium_reactants + num_dvalue_kinetic_reactants;
+    auto const num_equilibrium_reactants = equilibrium_reactants.size();
+    auto const num_kinetic_reactants = kinetic_reactants.size();
+    int const num_items = num_equilibrium_reactants + num_kinetic_reactants;
 
     auto const num_basic_items =
         basic_output_setups.getNumberOfItemsInDisplay();
     auto const num_components = components.size();
-    auto dvalue_item_id = num_basic_items + num_components + 1;
-    for (int i = 0; i < num_dvalue_items; ++i)
+    auto item_id = num_basic_items + num_components;
+    for (int i = 0; i < num_items; ++i)
     {
-        dropped_item_ids.push_back(dvalue_item_id);
-        dvalue_item_id += 2;
+        dropped_item_ids.push_back(item_id);
+        item_id += 2;
     }
 
     return std::make_unique<Output>(std::move(basic_output_setups),

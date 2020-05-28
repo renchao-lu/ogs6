@@ -30,6 +30,9 @@ const double CelsiusZeroInKelvin = 273.15;
 */
 const double IdealGasConstant = 8.3144621;
 
+/// Atmospheric pressure in Pascal
+const double AtmosphericPressure = 101325;
+
 /**
  * Molar masses of certain elements and chemical compounds
  */

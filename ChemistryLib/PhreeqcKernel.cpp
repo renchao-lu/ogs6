@@ -24,8 +24,8 @@ namespace PhreeqcKernelData
 {
 PhreeqcKernel::PhreeqcKernel(
     std::size_t const num_chemical_systems,
-    std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map,
+    //    std::vector<std::pair<int, std::string>> const&
+    //        process_id_to_component_name_map,
     std::string const& database,
     AqueousSolution aqueous_solution,
     std::unique_ptr<EquilibriumReactants>&& equilibrium_reactants,
@@ -93,16 +93,16 @@ PhreeqcKernel::PhreeqcKernel(
 
     configureOutputSettings();
 
-    for (auto const& map_pair : process_id_to_component_name_map)
-    {
-        auto const transport_process_id = map_pair.first;
-        auto const& transport_process_variable = map_pair.second;
+    //    for (auto const& map_pair : process_id_to_component_name_map)
+    //    {
+    //        auto const transport_process_id = map_pair.first;
+    //        auto const& transport_process_variable = map_pair.second;
 
-        auto master_species =
-            master_bsearch(transport_process_variable.c_str());
+    //        auto master_species =
+    //            master_bsearch(transport_process_variable.c_str());
 
-        _process_id_to_master_map[transport_process_id] = master_species;
-    }
+    //        _process_id_to_master_map[transport_process_id] = master_species;
+    //    }
 }
 
 void PhreeqcKernel::tidyEquilibriumReactants(
@@ -170,13 +170,13 @@ void PhreeqcKernel::reinitializeRates()
 }
 
 void PhreeqcKernel::doWaterChemistryCalculation(
-    std::vector<GlobalVector*>& process_solutions, double const dt)
+    std::vector<GlobalVector> const& int_pt_x, double const dt)
 {
-    setAqueousSolutions(process_solutions);
+    //    setAqueousSolutions(process_solutions);
 
-    setTimeStepSize(dt);
+    //    setTimeStepSize(dt);
 
-    execute(process_solutions);
+    //    execute(process_solutions);
 }
 
 void PhreeqcKernel::setAqueousSolutions(
@@ -323,16 +323,16 @@ void PhreeqcKernel::reset(std::size_t const chemical_system_id)
 }
 
 void PhreeqcKernel::executeInitialCalculation(
-    std::vector<GlobalVector*>& process_solutions)
+    std::vector<GlobalVector> const& int_pt_x)
 {
     // TODO (Renchao): This function could be replaced with
     // PhreeqcKernel::doWaterChemistryCalculation(std::vector<GlobalVector*>&
     // process_solutions, double const dt).
-    setAqueousSolutions(process_solutions);
+    //    setAqueousSolutions(process_solutions);
 
-    setTimeStepSize(0);
+    //    setTimeStepSize(0);
 
-    execute(process_solutions);
+    //    execute(process_solutions);
 }
 
 void PhreeqcKernel::updateNodalProcessSolutions(

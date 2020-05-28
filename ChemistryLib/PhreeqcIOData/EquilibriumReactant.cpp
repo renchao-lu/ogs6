@@ -17,10 +17,20 @@ namespace ChemistryLib
 namespace PhreeqcIOData
 {
 void EquilibriumReactant::print(std::ostream& os,
-                                std::size_t const global_id) const
+                                std::size_t const chemical_system_id,
+                                double const porosity,
+                                double const rho_w) const
 {
-    os << name << " " << saturation_index << " "
-       << (*amount)[global_id] << "\n";
+    // equilibrium reactant
+    // volume [m3]: volume_fraction * total_volume
+    // mass [mol]: volume_fraction * total_volume / molar_volume
+    // after the water mass [kg] is scaled from porosity * total_volume * rho to
+    // 1 i.e., scaling factor [-]: 1 / (porosity * total_volume * rho)
+    // equilibrium reactant mass after scaling [mol]:
+    // volume_fraction / molar_volume / porosity / rho
+    // TODO
+    os << name << " " << saturation_index << " " << saturation_index << " "
+       << (*mass)[chemical_system_id] << "\n";
 }
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

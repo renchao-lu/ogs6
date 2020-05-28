@@ -54,6 +54,12 @@ public:
                      std::vector<NumLib::LocalToGlobalIndexMap const*> const&
                          dof_table) override;
 
+    void extrapolate(
+        const unsigned num_components,
+        ExtrapolatableElementCollection const& extrapolatables,
+        GlobalVector const& int_pt_x,
+        std::vector<std::vector<GlobalIndexType>>& chemical_system_index_map);
+
     /*! \copydoc Extrapolator::calculateResiduals()
      *
      * The computed residuals are root-mean-square of the difference between
@@ -87,6 +93,12 @@ private:
         std::vector<GlobalVector*> const& x,
         std::vector<NumLib::LocalToGlobalIndexMap const*> const& dof_table,
         GlobalVector& counts);
+
+    void extrapolateElement(
+        std::size_t const element_index, const unsigned num_components,
+        ExtrapolatableElementCollection const& extrapolatables,
+        GlobalVector const& int_pt_x, GlobalVector& counts,
+        std::vector<std::vector<GlobalIndexType>>& chemical_system_index_map);
 
     //! Compute the residuals for one element
     void calculateResidualElement(

@@ -21,11 +21,7 @@ class ConfigTree;
 namespace MeshLib
 {
 class Mesh;
-
-template <typename PROP_VAL_TYPE>
-class PropertyVector;
 }
-
 namespace ChemistryLib
 {
 namespace PhreeqcIOData
@@ -34,7 +30,6 @@ struct EquilibriumReactant;
 
 std::vector<EquilibriumReactant> createEquilibriumReactants(
     boost::optional<BaseLib::ConfigTree> const& config,
-    MeshLib::Mesh const& mesh,
-    MeshLib::PropertyVector<std::size_t> const& chemical_system_map);
+    MeshLib::Mesh const& mesh);
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib

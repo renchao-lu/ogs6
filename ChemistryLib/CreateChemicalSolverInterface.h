@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,14 +27,18 @@ namespace MeshLib
 class Mesh;
 }
 
+namespace MaterialPropertyLib
+{
+class Medium;
+}
+
 namespace ChemistryLib
 {
 class ChemicalSolverInterface;
 
 template <ChemicalSolver chemical_solver>
-std::unique_ptr<ChemicalSolverInterface> createChemicalSolverInterface(
+std::shared_ptr<ChemicalSolverInterface> createChemicalSolverInterface(
     std::vector<std::unique_ptr<MeshLib::Mesh>> const& meshes,
-    std::vector<std::pair<int, std::string>> const&
-        process_id_to_component_name_map,
-    BaseLib::ConfigTree const& config, std::string const& output_directory);
+    BaseLib::ConfigTree const& config, std::string const& output_directory,
+    std::map<int, std::shared_ptr<MaterialPropertyLib::Medium>> const& media);
 }  // namespace ChemistryLib

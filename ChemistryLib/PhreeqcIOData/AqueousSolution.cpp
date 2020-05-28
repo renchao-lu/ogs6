@@ -12,44 +12,52 @@
 
 #include "AqueousSolution.h"
 #include "ChemistryLib/Common/ChargeBalance.h"
+#include "MaterialLib/PhysicalConstant.h"
 
 namespace ChemistryLib
 {
 namespace PhreeqcIOData
 {
-std::ostream& operator<<(std::ostream& os,
-                         AqueousSolution const& aqueous_solution)
+void AqueousSolution::print(std::ostream& os,
+                            std::size_t const chemical_system_id,
+                            double const density) const
 {
-    os << "temp " << aqueous_solution.temperature << "\n";
+    os << "temp " << temperature << "\n";
 
-    os << "pressure " << aqueous_solution.pressure << "\n";
+    os << "pressure "
+       << (*pressure)[chemical_system_id] /
+              MaterialLib::PhysicalConstant::AtmosphericPressure
+       << "\n";
 
-    switch (aqueous_solution.charge_balance)
+    switch (charge_balance)
     {
         case ChargeBalance::pH:
-            os << "pH " << aqueous_solution.pH << " charge"
+            os << "pH " << -std::log10((*pH)[chemical_system_id]) << " charge"
                << "\n";
-            os << "pe " << aqueous_solution.pe << "\n";
+            os << "pe " << (*pe)[chemical_system_id] << "\n";
             break;
         case ChargeBalance::pe:
-            os << "pH " << aqueous_solution.pH << "\n";
-            os << "pe " << aqueous_solution.pe << " charge"
+            os << "pH " << -std::log10((*pH)[chemical_system_id]) << "\n";
+            os << "pe " << (*pe)[chemical_system_id] << " charge"
                << "\n";
             break;
         case ChargeBalance::Unspecified:
-            os << "pH " << aqueous_solution.pH << "\n";
-            os << "pe " << aqueous_solution.pe << "\n";
+            os << "pH " << -std::log10((*pH)[chemical_system_id]) << "\n";
+            os << "pe " << (*pe)[chemical_system_id] << "\n";
             break;
     }
 
+    // Molality
     os << "units mol/kgw\n";
 
-    for (auto const& component : aqueous_solution.components)
+    for (auto const& component : components)
     {
-        os << component.name << " " << component.amount << "\n";
+        // unit conversion from mol/m3 to mol/kgw
+        os << component.name << " "
+           << (*component.amount)[chemical_system_id] / density << "\n";
     }
 
-    return os;
+    os << "\n";
 }
 }  // namespace PhreeqcIOData
 }  // namespace ChemistryLib
